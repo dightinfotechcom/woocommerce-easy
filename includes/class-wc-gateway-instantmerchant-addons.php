@@ -171,15 +171,13 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Easymerchant
 			// create the note
 			if (!$this->capture) {
 				if ($order->has_status(array('pending', 'failed'))) {
-					$order->reduce_order_stock();
 				}
 
-				$order->update_status('on-hold', sprintf(__('EasyMerchant charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-gateway-easymerchant'), $resp->charge_id));
+				$order->update_status('on-hold', sprintf(__('EasyMerchant charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-easymerchant'), $resp->charge_id));
 			} else {
 
 				$order->add_order_note($resp->message . ' Transaction ID ' . $resp->charge_id);
 				$order->payment_complete();
-				$order->reduce_order_stock();
 			}
 			return array(
 				'result' => 'success',
@@ -199,7 +197,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Easymerchant
 	{
 		$response = $this->process_subscription_payment($amount_to_charge, $renewal_order);
 		if (is_wp_error($response)) {
-			$renewal_order->update_status('failed', sprintf(__('easymerchant Transaction Failed (%s)', 'woocommerce-gateway-easymerchant'), $response->get_error_message()));
+			$renewal_order->update_status('failed', sprintf(__('easymerchant Transaction Failed (%s)', 'woocommerce-easymerchant'), $response->get_error_message()));
 		}
 	}
 }

@@ -7,7 +7,7 @@ use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodTyp
  *
  * @since 1.0.3
  */
-final class WC_Gateway_Dummy_Blocks_Support extends AbstractPaymentMethodType
+final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethodType
 {
 
 	/**
@@ -52,14 +52,14 @@ final class WC_Gateway_Dummy_Blocks_Support extends AbstractPaymentMethodType
 	public function get_payment_method_script_handles()
 	{
 		$script_path       = '/assets/js/frontend/blocks.js';
-		$script_asset_path = WC_Dummy_Payments::plugin_abspath() . 'assets/js/frontend/blocks.asset.php';
+		$script_asset_path = WC_Easymerchant_Payments::plugin_abspath() . 'assets/js/frontend/blocks.asset.php';
 		$script_asset      = file_exists($script_asset_path)
 			? require($script_asset_path)
 			: array(
 				'dependencies' => array(),
 				'version'      => '1.2.0'
 			);
-		$script_url        = WC_Dummy_Payments::plugin_url() . $script_path;
+		$script_url        = WC_Easymerchant_Payments::plugin_url() . $script_path;
 
 		wp_register_script(
 			'wc-dummy-payments-blocks',
@@ -70,7 +70,7 @@ final class WC_Gateway_Dummy_Blocks_Support extends AbstractPaymentMethodType
 		);
 
 		if (function_exists('wp_set_script_translations')) {
-			wp_set_script_translations('wc-dummy-payments-blocks', 'woocommerce-gateway-dummy', WC_Dummy_Payments::plugin_abspath() . 'languages/');
+			wp_set_script_translations('wc-dummy-payments-blocks', 'woocommerce-gateway-dummy', WC_Easymerchant_Payments::plugin_abspath() . 'languages/');
 		}
 
 		return ['wc-dummy-payments-blocks'];

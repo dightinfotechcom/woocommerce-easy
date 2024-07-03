@@ -180,44 +180,6 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 		return $curl;
 	}
 
-
-	/**
-	 * validate card details
-	 * 
-	 * @return $card_details
-	 */
-	public function validate_fields()
-	{
-
-		$cardholder_name = (isset($_POST[$this->id . '-card-holder-name']) && $_POST[$this->id . '-card-holder-name'] != '') ? preg_replace('/\s+/', '', $_POST[$this->id . '-card-holder-name']) : false;
-		var_dump($_POST[$this->id . '-card-holder-name']);
-		die();
-		$card_number = (isset($_POST[$this->id . '-card-number']) && $_POST[$this->id . '-card-number'] != '') ? preg_replace('/\s+/', '', $_POST[$this->id . '-card-number']) : false;
-
-		$card_expiry_month = (isset($_POST[$this->id . '-card-expiry']) && $_POST[$this->id . '-card-expiry'] != '') ? substr($_POST[$this->id . '-card-expiry'], 0, 2) : false;
-
-		$card_expiry_year = false;
-		if ((isset($_POST[$this->id . '-card-expiry']) && $_POST[$this->id . '-card-expiry'] != '')) {
-			$expiryArray = explode('/', $_POST[$this->id . '-card-expiry']);
-			$card_expiry_year = is_array($expiryArray) && count($expiryArray) == 2 ? trim($expiryArray[1]) : false;
-		}
-
-		$card_cvc = (isset($_POST[$this->id . '-card-cvc']) && $_POST[$this->id . '-card-cvc'] != '') ? $_POST[$this->id . '-card-cvc'] : false;
-
-		if ($card_number && $card_expiry_month && $card_expiry_year && $card_cvc) {
-			$card_details = array(
-				'cardholder_name' => $cardholder_name,
-				'card_number' => $card_number,
-				'exp_month' => $card_expiry_month,
-				'exp_year' => $card_expiry_year,
-				'cvc' => $card_cvc
-			);
-
-			return $card_details;
-		}
-
-		return false;
-	}
 	/**
 	 * Process the payment
 	 *
@@ -231,7 +193,7 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	{
 
 		global $woocommerce;
-
+		session_start();
 		$order = wc_get_order($order_id);
 		$user_id = get_current_user_id();
 		$im_cus_id = get_user_meta($user_id, '_customer_id', true);
@@ -241,14 +203,14 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 		// Concatenate the strings and the random number
 		$username = $order->shipping_first_name . $order->shipping_last_name . $randomNumber;
 		$customer_details = json_encode([
-			"username" 		=> strtolower($username),
-			"email" 		=> $order->billing_email,
-			"name" 			=> $order->shipping_first_name . ' ' . $order->shipping_last_name,
-			"address" 		=> $order->shipping_address_1,
-			"city" 			=> $order->shipping_city,
-			"state" 		=> $order->shipping_state,
-			"zip" 			=> $order->shipping_postcode,
-			"country" 		=> $order->billing_country,
+			"username" 			=> strtolower($username),
+			"email" 			=> $order->billing_email,
+			"name" 				=> $order->shipping_first_name . ' ' . $order->shipping_last_name,
+			"address" 			=> $order->shipping_address_1,
+			"city" 				=> $order->shipping_city,
+			"state" 			=> $order->shipping_state,
+			"zip" 				=> $order->shipping_postcode,
+			"country" 			=> $order->billing_country,
 		]);
 
 		$response = wp_remote_post($this->api_base_url . 'api/v1/customers/', array(
@@ -263,205 +225,186 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 		$response_body = wp_remote_retrieve_body($response);
 		$response_data = json_decode($response_body, true);
 
-		$post = array();
 
-		//existing customer and existing card
-		// if (isset($_POST['ccard_id']) && $_POST['ccard_id'] != '' && $response_data['customer_id']) {
-		// echo "existing customer existing card\n";
-		$post = array(
-			'customer' => $response_data['customer_id'],
-			'card_id' => $_POST['ccard_id'],
-			'description' => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
-			'currency' => strtolower(get_woocommerce_currency()),
-			'amount' => $order->order_total
-		);
-		// } else {
-		$card_details = $this->validate_fields();
-		$cardHolderName =  $card_details['cardholder_name'];
-		$cardNumber		= $card_details['card_number'];
-		$cardMonth		= $card_details['exp_month'];
-		$cardYeaar 			= $card_details['exp_year'];
-		$cardCvc		= $card_details['cvc'];
-		var_dump($cardHolderName);
-		var_dump($cardNumber);
-		var_dump($cardMonth);
-		var_dump($cardYeaar);
-		var_dump($cardCvc);
-		var_dump($card_details);
+		$getCard = $_SESSION['cardDetails'];
+		$card_number 	 = str_replace(' ', '', $getCard['easymerchant-card-number'] ?? '');
+		$expiry 		 = $getCard['easymerchant-card-expiry'] ?? '';
+		$cvc 			 = $getCard['easymerchant-card-cvc'] ?? '';
+		$cardholder_name = $getCard['easymerchant-card-holder-name'] ?? '';
 
-		// if (!$card_data) {
-		// 	wc_add_notice(__('Payment error:', 'woothemes') . 'Please check credit card details', 'error');
-		// 	return false;
-		// }
+		// Extract expiry month and year
+		list($exp_month, $exp_year) = explode(' / ', $expiry);
 
-		// $card_details = array(
-		// 	'description' => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
-		// 	'cardholder_name' => $card_data['cardholder_name'],
-		// 	'card_number' => $card_data['card_number'],
-		// 	'exp_month' => $card_data['exp_month'],
-		// 	'exp_year' => $card_data['exp_year'],
-		// 	'cvc' => $card_data['cvc'],
-		// 	'currency' => strtolower(get_woocommerce_currency()),
-		// 	'amount' => $order->order_total
-		// );
 
-		//existing customer and save new card
-		// if ((($this->saved_cards == 'yes' && isset($_POST['wc-easymerchant-new-payment-method'])) || $force_customer) && $response_data['customer_id']) {
-		// 	// $post += $card_details;
-		// 	$post['customer'] = $response_data['customer_id'];
-		// 	$post['save_card'] = 'true';
-		// } else if ($response_data['customer_id']) {
-		// 	//existing customer and new card
-		// 	// $post += $card_details;
-		// 	$post['customer'] = $response_data['customer_id'];
-		// } else {   //new customer
-		// 	$post += $customer_details;
-		// 	// $post += $card_details;
+		$card_details 	= json_encode([
+			'card_number' 			=> $card_number,
+			'cardholder_name'		=> $cardholder_name,
+			'exp_month'				=> $exp_month,
+			'exp_year' 				=> $exp_year,
+			'cvc'					=> $cvc,
+			'customer' 			    => $response_data['customer_id'],
+		]);
 
-		// 	//save customer and save card
-		// 	if (($this->saved_cards == 'yes' && isset($_POST['wc-easymerchant-new-payment-method'])) || $force_customer) {
-		// 		// echo "saving card\n";
-		// 		$post += array('create_customer' => 'true');
-		// 		$post += array('save_card' => 'true');
-		// 	}
-		// }
-		// }
-		print_r($response_data['customer_id']);
+		$cardSaved = wp_remote_post($this->api_base_url . 'api/v1/cards/', array(
+			'method'    => 'POST',
+			'headers'   => array(
+				'X-Api-Key'      => $this->api_key,
+				'X-Api-Secret'   => $this->secret_key,
+				'Content-Type'   => 'application/json',
+			),
+			'body'               => $card_details,
+		));
+		$card_body = wp_remote_retrieve_body($cardSaved);
+		$card_data = json_decode($card_body, true);
 
+		echo '<pre>';
+		print_r($_POST['save_payment_method']);
+		// print_r($_POST['wc-easymerchant-new-payment-method']);
+		// print_r($force_customer);
+		// print_r($response_data['customer_id']);
+		echo '</pre>';
 		die();
-		// if ($order->get_total() > 0) {
+		//existing customer and save new card
+		if ((($this->saved_cards == 'yes' && isset($_POST['wc-easymerchant-new-payment-method'])) || $force_customer) && $response_data['customer_id']) {
+			$getCard = wp_remote_post($this->api_base_url . 'api/v1/cards/' . $response_data['customer_id'] . '/cards/', array(
+				'method'    => 'GET',
+				'headers'   => array(
+					'X-Api-Key'      => $this->api_key,
+					'X-Api-Secret'   => $this->secret_key,
+					'Content-Type'   => 'application/json',
+				),
+			));
+			$card_list = wp_remote_retrieve_body($getCard);
+			$list_data = json_decode($card_list, true);
+		}
 
-		// 	if ($this->testmode == 'yes') {
-		// 		$post['test_mode'] = true;
-		// 	}
+		if ($order->get_total() > 0) {
+			$body = json_encode([
+				'payment_mode'      => 'auth_and_capture',
+				'amount'            => $order->order_total,
+				'name'              => $order->shipping_first_name . ' ' . $order->shipping_last_name,
+				'email'             => $order->billing_email,
+				'description'       => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+				'currency'		    => strtolower(get_woocommerce_currency()),
+				'card_number' 		=> $card_number,
+				'cardholder_name'	=> $cardholder_name,
+				'exp_month'			=> $exp_month,
+				'exp_year' 			=> $exp_year,
+				'cvc'				=> $cvc,
+			]);
+			$charge = wp_remote_post($this->api_base_url . 'api/v1/charges', array(
+				'method'    		=> 'POST',
+				'headers'   		=> array(
+					'X-Api-Key'     => $this->api_key,
+					'X-Api-Secret'  => $this->secret_key,
+					'Content-Type'  => 'application/json',
+				),
+				'body'				=> $body,
+			));
+			$createCharge 	= wp_remote_retrieve_body($charge);
+			$chargeResponse = json_decode($createCharge, true);
+		} else {
+			//existing customer and existing card
+			if ($_POST['ccard_id'] != '' && $im_cus_id) {
+				$customer_id = $im_cus_id;
+				$card_id = $_POST['ccard_id'];
+				$source = (object) array(
+					'customer' => $customer_id,
+					'source'   => $card_id
+				);
+				// Store source to order meta.
+				$this->save_source($order, $source);
+			} else if ($im_cus_id) {
+				//existing customer and save new card
+				$body = json_encode([
+					'card_number' 		=> $card_number,
+					'cardholder_name'	=> $cardholder_name,
+					'exp_month'			=> $exp_month,
+					'exp_year' 			=> $exp_year,
+					'cvc'				=> $cvc,
+					'customer'			=> $response_data['customer_id'],
+				]);
+				$post['customer'] = $im_cus_id;
+				$card = wp_remote_post($this->api_base_url . 'api/v1/card', array(
+					'method'    => 'POST',
+					'headers'   => array(
+						'X-Api-Key'     => $this->api_key,
+						'X-Api-Secret'  => $this->secret_key,
+						'Content-Type'  => 'application/json',
+					),
+					'body'				=> $body,
+				));
+				$createCard = wp_remote_retrieve_body($card);
+				$cardResponse = json_decode($createCard, true);
 
-		// 	if ($this->capture == 'yes') {
-		// 		$post += array('payment_mode' => 'auth_and_capture');
-		// 	} else {
-		// 		$post += array('payment_mode' => 'auth_only');
-		// 	}
-		// 	curl_setopt($curl, CURLOPT_URL, $this->api_base_url . 'api/v1/charges');
-		// 	curl_setopt($curl, CURLOPT_POST, 1);
-		// 	curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
+				if ($cardResponse && $cardResponse->status) {
+					$source = (object) array(
+						'customer' => $post['customer'],
+						'source'   => $cardResponse->card_id
+					);
+					// Store source to order meta.
+					$this->save_source($order, $source);
+				} else {
+					wc_add_notice(__('Payment error:', 'woocommerce-easymerchant') . ' ' . $cardResponse->message, 'error');
+					return false;
+				}
+			} else {
+				//new customer save customer and save card
+				$customer = wp_remote_post($this->api_base_url . 'api/v1/customer', array(
+					'method'    => 'POST',
+					'headers'   => array(
+						'X-Api-Key'     => $this->api_key,
+						'X-Api-Secret'  => $this->secret_key,
+						'Content-Type'  => 'application/json',
+					),
+					'body'				=> $customer_details,
+				));
+				$createCustomer = wp_remote_retrieve_body($customer);
+				$customerResponse = json_decode($createCustomer, true);
 
-		// 	$result = curl_exec($curl);
-		// 	$resp = json_decode($result);
+				if ($customerResponse && $customerResponse->status) {
+					$customer_id = $customerResponse->customer_id;
+					$card_details['customer'] = $customer_id;
 
-		// 	if ($resp && $resp->status) {
-		// 		$woocommerce->cart->empty_cart();
-		// 		$order = new WC_Order($order_id);
-		// 		add_post_meta($order_id, '_transaction_id', $resp->charge_id, true);
-		// 		$customer_id = '';
-		// 		if ($resp->customer_id) {
-		// 			$customer_id = $resp->customer_id;
-		// 		} else {
-		// 			$customer_id = $im_cus_id;
-		// 		}
-		// 		$source = (object) array(
-		// 			'customer' => $customer_id,
-		// 			'source'   => $resp->card_id
-		// 		);
-		// 		// Store source to order meta.
-		// 		$this->save_source($order, $source);
+					$cards = wp_remote_post($this->api_base_url . 'api/v1/card', array(
+						'method'    => 'POST',
+						'headers'   => array(
+							'X-Api-Key'     => $this->api_key,
+							'X-Api-Secret'  => $this->secret_key,
+							'Content-Type'  => 'application/json',
+						),
+						'body'				=> $card_details,
+					));
+					$createCards = wp_remote_retrieve_body($cards);
+					$cardsResponse = json_decode($createCards, true);
 
-		// 		add_user_meta(get_current_user_id(), '_customer_id', $resp->customer_id, true);
-		// 		// create the note
-		// 		if (!$this->capture) {
-		// 			if ($order->has_status(array('pending', 'failed'))) {
-		// 				$order->reduce_order_stock();
-		// 			}
-
-		// 			$order->update_status('on-hold', sprintf(__('EasyMerchant charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-gateway-easymerchant'), $resp->charge_id));
-		// 		} else {
-
-		// 			$order->add_order_note($resp->message . ' Transaction ID ' . $resp->charge_id);
-		// 			$order->payment_complete();
-		// 			$order->reduce_order_stock();
-		// 		}
-		// 		return array(
-		// 			'result' => 'success',
-		// 			'redirect' => $this->get_return_url($order)
-		// 		);
-		// 	} else if ($resp) {
-		// 		wc_add_notice(__('Payment error:', 'woothemes') . ' ' . $resp->message, 'error');
-		// 		return false;
-		// 	} else {
-		// 		wc_add_notice(__('Payment error:', 'woothemes') . 'Please try again', 'error');
-		// 		return false;
-		// 	}
-		// } else {
-		// 	//existing customer and existing card
-		// 	if ($_POST['ccard_id'] != '' && $im_cus_id) {
-		// 		$customer_id = $im_cus_id;
-		// 		$card_id = $_POST['ccard_id'];
-		// 		$source = (object) array(
-		// 			'customer' => $customer_id,
-		// 			'source'   => $card_id
-		// 		);
-		// 		// Store source to order meta.
-		// 		$this->save_source($order, $source);
-		// 	} else if ($im_cus_id) {
-		// 		//existing customer and save new card
-		// 		$post['customer'] = $im_cus_id;
-		// 		curl_setopt($curl, CURLOPT_URL, $this->api_base_url . 'api/v1/card');
-		// 		curl_setopt($curl, CURLOPT_POST, 'true');
-		// 		curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
-
-		// 		$resp = json_decode(curl_exec($curl));
-
-		// 		if ($resp && $resp->status) {
-		// 			$source = (object) array(
-		// 				'customer' => $post['customer'],
-		// 				'source'   => $resp->card_id
-		// 			);
-		// 			// Store source to order meta.
-		// 			$this->save_source($order, $source);
-		// 		} else {
-		// 			wc_add_notice(__('Payment error:', 'woothemes') . ' ' . $resp->message, 'error');
-		// 			return false;
-		// 		}
-		// 	} else {
-		// 		//new customer save customer and save card
-		// 		curl_setopt($curl, CURLOPT_URL, $this->api_base_url . 'api/v1/customer');
-		// 		curl_setopt($curl, CURLOPT_POST, 'true');
-		// 		curl_setopt($curl, CURLOPT_POSTFIELDS, $customer_details);
-
-		// 		$resp = json_decode(curl_exec($curl));
-
-		// 		if ($resp && $resp->status) {
-		// 			$customer_id = $resp->customer_id;
-		// 			$card_details['customer'] = $customer_id;
-		// 			curl_setopt($curl, CURLOPT_URL, $this->api_base_url . 'api/v1/card');
-		// 			curl_setopt($curl, CURLOPT_POST, 'true');
-		// 			curl_setopt($curl, CURLOPT_POSTFIELDS, $card_details);
-
-		// 			$resp = json_decode(curl_exec($curl));
-
-		// 			if ($resp && $resp->status) {
-		// 				$source = (object) array(
-		// 					'customer' => $customer_id,
-		// 					'source'   => $resp->card_id
-		// 				);
-		// 				// Store source to order meta.
-		// 				$this->save_source($order, $source);
-		// 			} else {
-		// 				wc_add_notice(__('Payment error:', 'woothemes') . ' ' . $resp->message, 'error');
-		// 				return false;
-		// 			}
-		// 		} else {
-		// 			wc_add_notice(__('Payment error:', 'woothemes') . ' ' . $resp->message, 'error');
-		// 			return false;
-		// 		}
-		// 	}
-		// 	$order = new WC_Order($order_id);
-		// 	$order->payment_complete();
-		// 	$woocommerce->cart->empty_cart();
-		// }
-		// return array(
-		// 	'result' => 'success',
-		// 	'redirect' => $this->get_return_url($order)
-		// );
+					if ($cardsResponse && $cardsResponse->status) {
+						$source = (object) array(
+							'customer' => $customer_id,
+							'source'   => $cardsResponse->card_id
+						);
+						// Store source to order meta.
+						$this->save_source($order, $source);
+					} else {
+						wc_add_notice(__('Payment error:', 'woocommerce-easymerchant') . ' ' . $cardsResponse->message, 'error');
+						return false;
+					}
+				} else {
+					wc_add_notice(__('Payment error:', 'woocommerce-easymerchant') . ' ' . $customerResponse->message, 'error');
+					return false;
+				}
+			}
+			$order = new WC_Order($order_id);
+			$order->payment_complete();
+			$woocommerce->cart->empty_cart();
+		}
+		return array(
+			'result' => 'success',
+			'redirect' => $this->get_return_url($order)
+		);
 	}
+
+
 	/**
 	 * Save source to order.
 	 *
@@ -629,14 +572,14 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	 * @param  WC_Order  $order
 	 * @return void
 	 */
-	public function process_subscription_payment($amount, $order)
-	{
-		$payment_result = $this->get_option('result');
+	// public function process_subscription_payment($amount, $order)
+	// {
+	// 	$payment_result = $this->get_option('result');
 
-		if ('success' === $payment_result) {
-			$order->payment_complete();
-		} else {
-			$order->update_status('failed', __('Subscription payment failed. To make a successful payment using Dummy Payments, please review the gateway settings.', 'woocommerce-easymerchant'));
-		}
-	}
+	// 	if ('success' === $payment_result) {
+	// 		$order->payment_complete();
+	// 	} else {
+	// 		$order->update_status('failed', __('Subscription payment failed. To make a successful payment using Easymerchant Payments, please review the gateway settings.', 'woocommerce-easymerchant'));
+	// 	}
+	// }
 }

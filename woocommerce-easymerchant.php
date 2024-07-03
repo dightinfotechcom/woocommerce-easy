@@ -67,7 +67,7 @@ function do_ssl_check()
  *
  * @class WC_Easymerchant_Payments
  */
-class WC_Dummy_Payments
+class WC_Easymerchant_Payments
 {
 
 	/**
@@ -159,6 +159,7 @@ class WC_Dummy_Payments
 				}
 			));
 		});
+		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'img_woocommerce_addon_settings_link'));
 	}
 
 	function init_easy_merchant()
@@ -179,7 +180,7 @@ class WC_Dummy_Payments
 		}
 		// Init the gateway itself
 		$this->init_gateways();
-		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'img_woocommerce_addon_settings_link'));
+
 		add_action('woocommerce_order_status_on-hold_to_processing', array($this, 'capture_payment'));
 		add_action('woocommerce_order_status_on-hold_to_completed', array($this, 'capture_payment'));
 	}
@@ -216,6 +217,7 @@ class WC_Dummy_Payments
 
 		if (class_exists('WC_Payment_Gateway')) {
 			include_once('includes/class-wc-gateway-dummy.php');
+			include_once('includes/class-wc-gateway-ach-merchant.php');
 		}
 		add_filter('woocommerce_payment_gateways', array($this, 'add_gateways'));
 
@@ -249,6 +251,7 @@ class WC_Dummy_Payments
 	public static function add_gateway($gateways)
 	{
 		$options = get_option('woocommerce_dummy_settings', array());
+
 		if (isset($options['hide_for_non_admin_users'])) {
 			$hide_for_non_admin_users = $options['hide_for_non_admin_users'];
 		} else {
@@ -257,6 +260,9 @@ class WC_Dummy_Payments
 
 		if (('yes' === $hide_for_non_admin_users && current_user_can('manage_options')) || 'no' === $hide_for_non_admin_users) {
 			$gateways[] = 'WC_Gateway_Dummy';
+			$gateways[] = 'WC_Gateway_ACH_Easymerchant';
+			$gateways[] = 'WC_Gateway_Easymerchant_Addons';
+			$gateways[] = 'WC_Gateway_Ach_Easymerchant_Addons';
 		}
 		return $gateways;
 	}
@@ -268,8 +274,10 @@ class WC_Dummy_Payments
 	{
 		if ($this->subscription_support_enabled || $this->pre_order_enabled) {
 			$methods[] = 'WC_Gateway_Easymerchant_Addons';
+			$methods[] = 'WC_Gateway_ACF_Easymerchant_Addons';
 		} else {
 			$methods[] = 'WC_Gateway_Dummy';
+			$methods[] = 'WC_Gateway_ACH_Easymerchant';
 		}
 		return $methods;
 	}
@@ -324,8 +332,15 @@ class WC_Dummy_Payments
 	/*Plugin Settings Link*/
 	function img_woocommerce_addon_settings_link($links)
 	{
+		// echo '<pre>';
+		// print_r($links);
+		// echo '</pre>';
+		// die();
 		$settings_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=easymerchant">' . __('Easymerchant Settings', 'woocommerce-easymerchant') . '</a>';
-		array_push($links, $settings_link);
+		$settings_ach_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=ach-easymerchant">' . __('ACH Settings', 'woocommerce-easymerchant') . '</a>';
+		// array_push($links, $settings_link);
+		array_unshift($links, $settings_link);
+		array_push($links, $settings_ach_link);
 		return $links;
 	}
 
@@ -337,6 +352,7 @@ class WC_Dummy_Payments
 		// Make the WC_Gateway_Easymerchant class available.
 		if (class_exists('WC_Payment_Gateway')) {
 			require_once 'includes/class-wc-gateway-dummy.php';
+			require_once 'includes/class-wc-gateway-ach-merchant.php';
 		}
 	}
 
@@ -429,14 +445,16 @@ class WC_Dummy_Payments
 	{
 		if (class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType')) {
 			require_once 'includes/blocks/class-wc-dummy-payments-blocks.php';
+			require_once 'includes/blocks/class-wc-ach-easymerchant-payments-blocks.php';
 			add_action(
 				'woocommerce_blocks_payment_method_type_registration',
 				function (Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry) {
-					$payment_method_registry->register(new WC_Gateway_Dummy_Blocks_Support());
+					$payment_method_registry->register(new WC_Gateway_Easymerchant_Blocks_Support());
+					$payment_method_registry->register(new WC_Gateway_ACH_Easymerchant_Blocks_Support());
 				}
 			);
 		}
 	}
 }
 
-WC_Dummy_Payments::init();
+WC_Easymerchant_Payments::init();

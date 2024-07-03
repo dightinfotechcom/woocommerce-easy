@@ -22,7 +22,7 @@ final class WC_Gateway_ACH_Easymerchant_Blocks_Support extends AbstractPaymentMe
 	 *
 	 * @var string
 	 */
-	protected $name = 'ach';
+	protected $name = 'ach-easymerchant';
 
 	/**
 	 * Initializes the payment method type.
@@ -52,17 +52,17 @@ final class WC_Gateway_ACH_Easymerchant_Blocks_Support extends AbstractPaymentMe
 	public function get_payment_method_script_handles()
 	{
 		$script_path       = '/assets/js/frontend/blocks.js';
-		$script_asset_path = WC_Ach_Merchant::plugin_abspath() . 'assets/js/frontend/blocks.asset.php';
+		$script_asset_path = WC_Easymerchant_Payments::plugin_abspath() . 'assets/js/frontend/blocks.asset.php';
 		$script_asset      = file_exists($script_asset_path)
 			? require($script_asset_path)
 			: array(
 				'dependencies' => array(),
 				'version'      => '1.2.0'
 			);
-		$script_url        = WC_Ach_Merchant::plugin_url() . $script_path;
+		$script_url        = WC_Easymerchant_Payments::plugin_url() . $script_path;
 
 		wp_register_script(
-			'wc-dummy-payments-blocks',
+			'wc-ach-easymerchant-payments-blocks',
 			$script_url,
 			$script_asset['dependencies'],
 			$script_asset['version'],
@@ -70,10 +70,10 @@ final class WC_Gateway_ACH_Easymerchant_Blocks_Support extends AbstractPaymentMe
 		);
 
 		if (function_exists('wp_set_script_translations')) {
-			wp_set_script_translations('wc-dummy-payments-blocks', 'woocommerce-gateway-dummy', WC_Dummy_Payments::plugin_abspath() . 'languages/');
+			wp_set_script_translations('wc-ach-easymerchant-payments-blocks', 'woocommerce-gateway-ach-easymerchant', WC_Easymerchant_Payments::plugin_abspath() . 'languages/');
 		}
 
-		return ['wc-dummy-payments-blocks'];
+		return ['wc-ach-easymerchant-payments-blocks'];
 	}
 
 	/**
