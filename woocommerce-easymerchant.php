@@ -215,20 +215,30 @@ class WC_Easymerchant_Payments
 			$this->pre_order_enabled = true;
 		}
 
+		// if (class_exists('WC_Payment_Gateway')) {
+		// 	include_once('includes/class-wc-gateway-dummy.php');
+		// 	include_once('includes/class-wc-gateway-ach-merchant.php');
+		// }
 		if (class_exists('WC_Payment_Gateway')) {
 			include_once('includes/class-wc-gateway-dummy.php');
 			include_once('includes/class-wc-gateway-ach-merchant.php');
+			if ($this->subscription_support_enabled) {
+				include_once('includes/class-wc-gateway-easymerchant-addons.php');
+				include_once('includes/class-wc-gateway-achmerchant-addons.php');
+			}
 		}
 		add_filter('woocommerce_payment_gateways', array($this, 'add_gateways'));
 
-		$load_addons = ($this->subscription_support_enabled
-			||
-			$this->pre_order_enabled
-		);
 
-		if ($load_addons) {
-			require_once 'includes/class-wc-gateway-instantmerchant-addons.php';
-		}
+		// $load_addons = ($this->subscription_support_enabled
+		// 	||
+		// 	$this->pre_order_enabled
+		// );
+
+		// if ($load_addons) {
+		// 	require_once 'includes/class-wc-gateway-easymerchant-addons.php';
+		// 	require_once 'includes/class-wc-gateway-achmerchant-addons.php';
+		// }
 	}
 	/**
 	 * Plugin bootstrapping.
@@ -261,8 +271,6 @@ class WC_Easymerchant_Payments
 		if (('yes' === $hide_for_non_admin_users && current_user_can('manage_options')) || 'no' === $hide_for_non_admin_users) {
 			$gateways[] = 'WC_Gateway_Dummy';
 			$gateways[] = 'WC_Gateway_ACH_Easymerchant';
-			$gateways[] = 'WC_Gateway_Easymerchant_Addons';
-			$gateways[] = 'WC_Gateway_Ach_Easymerchant_Addons';
 		}
 		return $gateways;
 	}
@@ -274,7 +282,7 @@ class WC_Easymerchant_Payments
 	{
 		if ($this->subscription_support_enabled || $this->pre_order_enabled) {
 			$methods[] = 'WC_Gateway_Easymerchant_Addons';
-			$methods[] = 'WC_Gateway_ACF_Easymerchant_Addons';
+			$methods[] = 'WC_Gateway_ACHmerchant_Addons';
 		} else {
 			$methods[] = 'WC_Gateway_Dummy';
 			$methods[] = 'WC_Gateway_ACH_Easymerchant';
@@ -332,10 +340,6 @@ class WC_Easymerchant_Payments
 	/*Plugin Settings Link*/
 	function img_woocommerce_addon_settings_link($links)
 	{
-		// echo '<pre>';
-		// print_r($links);
-		// echo '</pre>';
-		// die();
 		$settings_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=easymerchant">' . __('Easymerchant Settings', 'woocommerce-easymerchant') . '</a>';
 		$settings_ach_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=ach-easymerchant">' . __('ACH Settings', 'woocommerce-easymerchant') . '</a>';
 		// array_push($links, $settings_link);

@@ -572,14 +572,46 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	 * @param  WC_Order  $order
 	 * @return void
 	 */
-	// public function process_subscription_payment($amount, $order)
-	// {
-	// 	$payment_result = $this->get_option('result');
+	public function process_subscription_payment($amount, $order)
+	{
+		$order_id = $order->get_id();
+		$transaction_id = get_post_meta($order_id, '_transaction_id', true);
+		$user_id = $order->get_user_id();
+		$im_cus_id = get_user_meta($user_id, '_customer_id', true);
+		$card_id = get_post_meta($order_id, '_card_id', true);
 
-	// 	if ('success' === $payment_result) {
-	// 		$order->payment_complete();
-	// 	} else {
-	// 		$order->update_status('failed', __('Subscription payment failed. To make a successful payment using Easymerchant Payments, please review the gateway settings.', 'woocommerce-easymerchant'));
-	// 	}
-	// }
+		if (!$im_cus_id || !$card_id) {
+			$order->update_status('failed', __('Easymerchant Subscription Payment Failed: Missing customer or card details', 'woocommerce-easymerchant'));
+			return;
+		}
+
+		$body = json_encode([
+			'payment_mode' => 'auth_and_capture',
+			'amount' => $amount,
+			'description' => sprintf(__('Subscription Payment for Order #%s', 'woocommerce'), $order_id),
+			'currency' => strtolower(get_woocommerce_currency()),
+			'customer' => $im_cus_id,
+			'card' => $card_id,
+		]);
+
+		$response = wp_remote_post($this->api_base_url . 'api/v1/charges', array(
+			'method'    => 'POST',
+			'headers'   => array(
+				'X-Api-Key'      => $this->api_key,
+				'X-Api-Secret'   => $this->secret_key,
+				'Content-Type'   => 'application/json',
+			),
+			'body' => $body,
+		));
+
+		$response_body = wp_remote_retrieve_body($response);
+		$response_data = json_decode($response_body, true);
+
+		if (isset($response_data['status']) && $response_data['status'] === 'success') {
+			$order->payment_complete($response_data['transaction_id']);
+			$order->add_order_note(sprintf(__('Easymerchant Subscription Payment Successful (Transaction ID: %s)', 'woocommerce-easymerchant'), $response_data['transaction_id']));
+		} else {
+			$order->update_status('failed', sprintf(__('Easymerchant Subscription Payment Failed: %s', 'woocommerce-easymerchant'), $response_data['message']));
+		}
+	}
 }

@@ -15,10 +15,6 @@ const defaultLabel2 = __("ACH Easymerchant", "woo-gutenberg-products-block");
 const label = decodeEntities(settings.title) || defaultLabel;
 const label2 = decodeEntities(settings.title) || defaultLabel2;
 
-const apiBaseUrl = "https://stage-api.stage-easymerchant.io";
-const apiKey = "d024a5f6f189be781ebd30d10";
-const secretKey = "d38a4eb39d46e3cf32f3d3217";
-
 const PaymentFields = () => {
 	const [cards, setCards] = useState([]);
 	const [useSavedCard, setUseSavedCard] = useState(false);
