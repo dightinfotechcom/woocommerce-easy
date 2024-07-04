@@ -1,6 +1,6 @@
-# WooCommerce Dummy Payments Gateway
+# WooCommerce Easymerchant Payments Gateway
 
-A dummy payment gateway for your WooCommerce development needs, with built-in support for subscriptions and the block-based checkout.
+An easymerchant payment gateway for your WooCommerce development needs, with built-in support for subscriptions and the block-based checkout.
 
 ### Building instructions
 
