@@ -256,14 +256,6 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 		));
 		$card_body = wp_remote_retrieve_body($cardSaved);
 		$card_data = json_decode($card_body, true);
-
-		echo '<pre>';
-		print_r($_POST['save_payment_method']);
-		// print_r($_POST['wc-easymerchant-new-payment-method']);
-		// print_r($force_customer);
-		// print_r($response_data['customer_id']);
-		echo '</pre>';
-		die();
 		//existing customer and save new card
 		if ((($this->saved_cards == 'yes' && isset($_POST['wc-easymerchant-new-payment-method'])) || $force_customer) && $response_data['customer_id']) {
 			$getCard = wp_remote_post($this->api_base_url . 'api/v1/cards/' . $response_data['customer_id'] . '/cards/', array(

@@ -214,11 +214,6 @@ class WC_Easymerchant_Payments
 		if (class_exists('WC_Pre_Orders_Order')) {
 			$this->pre_order_enabled = true;
 		}
-
-		// if (class_exists('WC_Payment_Gateway')) {
-		// 	include_once('includes/class-wc-gateway-dummy.php');
-		// 	include_once('includes/class-wc-gateway-ach-merchant.php');
-		// }
 		if (class_exists('WC_Payment_Gateway')) {
 			include_once('includes/class-wc-gateway-dummy.php');
 			include_once('includes/class-wc-gateway-ach-merchant.php');
@@ -228,17 +223,6 @@ class WC_Easymerchant_Payments
 			}
 		}
 		add_filter('woocommerce_payment_gateways', array($this, 'add_gateways'));
-
-
-		// $load_addons = ($this->subscription_support_enabled
-		// 	||
-		// 	$this->pre_order_enabled
-		// );
-
-		// if ($load_addons) {
-		// 	require_once 'includes/class-wc-gateway-easymerchant-addons.php';
-		// 	require_once 'includes/class-wc-gateway-achmerchant-addons.php';
-		// }
 	}
 	/**
 	 * Plugin bootstrapping.
