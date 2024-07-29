@@ -4,11 +4,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * WC_Gateway_Easymerchant_Addons class.
+ * WC_Gateway_lyfePAY_Addons class.
  *
- * @extends WC_Easy_Merchant
+ * @extends WC_Gateway_lyfePAY
  */
-class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
+class WC_Gateway_lyfePAY_Addons extends WC_Gateway_lyfePAY
 {
 
 	/**
@@ -31,7 +31,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 			'multiple_subscriptions'
 		);
 		if (class_exists('WC_Subscriptions_Order')) {
-			add_action('woocommerce_scheduled_subscription_payment_easymerchant', array($this, 'scheduled_subscription_payment'), 10, 2);
+			add_action('woocommerce_scheduled_subscription_payment_lyfePAY', array($this, 'scheduled_subscription_payment'), 10, 2);
 		}
 
 		if (class_exists('WC_Pre_Orders_Order')) {
@@ -118,8 +118,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 
 	// 		// Check if $img_source is not empty before making the request
 	// 		if (!empty($img_source)) {
-	// 			$api_base_url = 'https://stage-api.stage-easymerchant.io/';
-	// 			$url = $api_base_url . "api/v1/card?card_id=$img_source";
+	// 			$url = $this->api_base_url . "/api/v1/card?card_id=$img_source";
 
 	// 			$curl = curl_init();
 	// 			$options = get_option('woocommerce_easymerchant_settings');
@@ -127,8 +126,9 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 	// 			curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "GET");
 	// 			curl_setopt($curl, CURLOPT_URL, $url);
 	// 			curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-	// 				'X-Api-Key: ' . $options['test_api_key'], // Replace with your actual API Key
-	// 				'X-Api-Secret: ' . $options['test_secret_key'] // Replace with your actual API Secret
+	// 				'X-Api-Key: ' . $this->api_key, // Replace with your actual API Key
+	// 				'X-Api-Secret: ' . $this->secret_key, // Replace with your actual API Secret
+	// 				'User-Agent: ' . LYFE_APP_NAME,
 	// 			));
 	// 			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 
@@ -171,7 +171,8 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 	// 	curl_setopt($curl, CURLOPT_POSTFIELDS, $charge_card);
 	// 	curl_setopt($curl, CURLOPT_HTTPHEADER, array(
 	// 		'X-Api-Key: ' . $options['test_api_key'], // Replace with your actual API Key
-	// 		'X-Api-Secret: ' . $options['test_secret_key'] // Replace with your actual API Secret
+	// 		'X-Api-Secret: ' . $options['test_secret_key'], // Replace with your actual API Secret
+	// 		'User-Agent: ' . LYFE_APP_NAME,
 	// 	));
 
 	// 	$resp = json_decode(curl_exec($curl));
@@ -202,44 +203,44 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 	{
 		global $woocommerce;
 		if ($amount * 100 < 50) {
-			return new WP_Error('easymerchant_error', __('Sorry, the minimum allowed order total is 0.50 to use this payment method.', 'woocommerce-gateway-easymerchant'));
+			return new WP_Error('lyfePAY_error', __('Sorry, the minimum allowed order total is 0.50 to use this payment method.', 'woocommerce-lyfePAY'));
 		}
 
 		if ($order) {
 			$img_source = get_post_meta($order->id, '_card_id', true);
 			if (!empty($img_source)) {
-				$api_base_url = 'https://stage-api.stage-easymerchant.io/';
-				$url = $api_base_url . "api/v1/card?card_id=$img_source";
+				$url = $this->api_base_url . "/api/v1/card?card_id=$img_source";
 
 				$curl = curl_init();
-				$options = get_option('woocommerce_easymerchant_settings');
+				$options = get_option('woocommerce_lyfePAY_settings');
 				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "GET");
 				curl_setopt($curl, CURLOPT_URL, $url);
 				curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-					'X-Api-Key: ' . $options['test_api_key'],
-					'X-Api-Secret: ' . $options['test_secret_key']
+					'X-Api-Key: ' . $this->api_key,
+					'X-Api-Secret: ' . $this->secret_key,
+					'User-Agent: ' . LYFE_APP_NAME,
 				));
 				curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 
 				$response = curl_exec($curl);
 				if (curl_errno($curl)) {
-					return new WP_Error('easymerchant_error', 'Request Error: ' . curl_error($curl));
+					return new WP_Error('lyfePAY_error', 'Request Error: ' . curl_error($curl));
 				}
 
 				$resp = json_decode($response, true);
 				curl_close($curl);
 
 				if (json_last_error() !== JSON_ERROR_NONE) {
-					return new WP_Error('easymerchant_error', 'JSON Decode Error: ' . json_last_error_msg());
+					return new WP_Error('lyfePAY_error', 'JSON Decode Error: ' . json_last_error_msg());
 				}
 
 				if (isset($resp['Card']['customer_id'])) {
 					$customer_id = $resp['Card']['customer_id'];
 				} else {
-					return new WP_Error('easymerchant_error', 'Customer ID not found in the response.');
+					return new WP_Error('lyfePAY_error', 'Customer ID not found in the response.');
 				}
 			} else {
-				return new WP_Error('easymerchant_error', 'Card ID is empty. Cannot make the API request.');
+				return new WP_Error('lyfePAY_error', 'Card ID is empty. Cannot make the API request.');
 			}
 		}
 
@@ -261,17 +262,18 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 		curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($charge_card));
 		curl_setopt($curl, CURLOPT_HTTPHEADER, array(
 			'X-Api-Key: ' . $options['test_api_key'],
-			'X-Api-Secret: ' . $options['test_secret_key']
+			'X-Api-Secret: ' . $options['test_secret_key'],
+			'User-Agent: ' . LYFE_APP_NAME,
 		));
 
 		$response = curl_exec($curl);
 		if (curl_errno($curl)) {
-			return new WP_Error('easymerchant_error', 'Request Error: ' . curl_error($curl));
+			return new WP_Error('lyfePAY_error', 'Request Error: ' . curl_error($curl));
 		}
 
 		$resp = json_decode($response);
 		if (json_last_error() !== JSON_ERROR_NONE) {
-			return new WP_Error('easymerchant_error', 'JSON Decode Error: ' . json_last_error_msg());
+			return new WP_Error('lyfePAY_error', 'JSON Decode Error: ' . json_last_error_msg());
 		}
 
 		curl_close($curl);
@@ -281,7 +283,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 			update_post_meta($order->id, '_transaction_id', $resp->charge_id, true);
 
 			if (!$this->capture) {
-				$order->update_status('on-hold', sprintf(__('EasyMerchant charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-easymerchant'), $resp->charge_id));
+				$order->update_status('on-hold', sprintf(__('lyfePAY charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-lyfePAY'), $resp->charge_id));
 			} else {
 				$order->add_order_note($resp->message . ' Transaction ID ' . $resp->charge_id);
 				$order->payment_complete();
@@ -292,7 +294,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 				'redirect' => $this->get_return_url($order)
 			);
 		} else {
-			return new WP_Error('easymerchant_error', 'Payment processing failed.');
+			return new WP_Error('lyfePAY_error', 'Payment processing failed.');
 		}
 	}
 
@@ -306,7 +308,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 	{
 		$response = $this->process_subscription_payment($amount_to_charge, $renewal_order);
 		if (is_wp_error($response)) {
-			$renewal_order->update_status('failed', sprintf(__('easymerchant Transaction Failed (%s)', 'woocommerce-easymerchant'), $response->get_error_message()));
+			$renewal_order->update_status('failed', sprintf(__('lyfePAY Transaction Failed (%s)', 'woocommerce-lyfePAY'), $response->get_error_message()));
 		}
 	}
 }

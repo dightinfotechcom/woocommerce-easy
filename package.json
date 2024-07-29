@@ -1,6 +1,6 @@
 {
-	"name": "woocommerce-gateway-dummy",
-	"title": "WooCommerce Easymerchant Payments",
+	"name": "woocommerce-gateway-lyfepay",
+	"title": "WooCommerce lyfePAY Payments",
 	"version": "1.0.6",
 	"author": "WooCommerce",
 	"license": "GPL-3.0+",

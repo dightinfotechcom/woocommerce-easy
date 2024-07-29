@@ -3,17 +3,17 @@
 use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;
 
 /**
- * Dummy Payments Blocks integration
+ * ACH lyfePAY Blocks integration
  *
  * @since 1.0.3
  */
-final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethodType
+final class WC_Gateway_ACH_lyfePAY_Blocks_Support extends AbstractPaymentMethodType
 {
 
 	/**
 	 * The gateway instance.
 	 *
-	 * @var WC_Gateway_Dummy
+	 * @var WC_Gateway_lyfePAY
 	 */
 	private $gateway;
 
@@ -22,14 +22,14 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 	 *
 	 * @var string
 	 */
-	protected $name = 'easymerchant';
+	protected $name = 'ach-lyfePAY';
 
 	/**
 	 * Initializes the payment method type.
 	 */
 	public function initialize()
 	{
-		$this->settings = get_option('woocommerce_dummy_settings', []);
+		$this->settings = get_option('woocommerce_lyfePAY_settings', []);
 		$gateways       = WC()->payment_gateways->payment_gateways();
 		$this->gateway  = $gateways[$this->name];
 	}
@@ -52,17 +52,17 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 	public function get_payment_method_script_handles()
 	{
 		$script_path       = '/assets/js/frontend/blocks.js';
-		$script_asset_path = WC_Easymerchant_Payments::plugin_abspath() . 'assets/js/frontend/blocks.asset.php';
+		$script_asset_path = WC_lyfePAY_Payments::plugin_abspath() . 'assets/js/frontend/blocks.asset.php';
 		$script_asset      = file_exists($script_asset_path)
 			? require($script_asset_path)
 			: array(
 				'dependencies' => array(),
 				'version'      => '1.2.0'
 			);
-		$script_url        = WC_Easymerchant_Payments::plugin_url() . $script_path;
+		$script_url        = WC_lyfePAY_Payments::plugin_url() . $script_path;
 
 		wp_register_script(
-			'wc-dummy-payments-blocks',
+			'wc-ach-lyfePAY-payments-blocks',
 			$script_url,
 			$script_asset['dependencies'],
 			$script_asset['version'],
@@ -70,32 +70,11 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 		);
 
 		if (function_exists('wp_set_script_translations')) {
-			wp_set_script_translations('wc-dummy-payments-blocks', 'woocommerce-gateway-dummy', WC_Easymerchant_Payments::plugin_abspath() . 'languages/');
+			wp_set_script_translations('wc-ach-lyfePAY-payments-blocks', 'woocommerce-gateway-ach-lyfePAY', WC_lyfePAY_Payments::plugin_abspath() . 'languages/');
 		}
 
-		return ['wc-dummy-payments-blocks'];
+		return ['wc-ach-lyfePAY-payments-blocks'];
 	}
-
-	public function get_curl($url = '')
-	{
-		if ($url) {
-			$curl = curl_init($url);
-		} else {
-			$curl = curl_init();
-		}
-		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
-		curl_setopt($curl, CURLOPT_AUTOREFERER, 1);
-		curl_setopt($curl, CURLOPT_VERBOSE, false);
-		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-			'X-Api-Key: ' . $this->api_key,
-			'X-Api-Secret: ' . $this->secret_key
-		));
-		return $curl;
-	}
-
-
 
 	/**
 	 * Returns an array of key=>value pairs of data made available to the payment methods script.

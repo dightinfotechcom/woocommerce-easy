@@ -1,10 +1,10 @@
 <?php
 
 /**
- * WC_Gateway_ACH_Easymerchant class
+ * WC_Gateway_ACH_lyfePAY class
  *
- * @author   Easymerchant <info@easymerchant.io>
- * @package  WooCommerce ACH Easymerchant Gateway
+ * @author   lyfePAY
+ * @package  WooCommerce ACH lyfePAY Gateway
  * @since    1.0.0
  */
 
@@ -14,13 +14,13 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Easymerchant Gateway.
+ * lyfePAY Gateway.
  *
- * @class    WC_Gateway_ACH_Easymerchant
+ * @class    WC_Gateway_ACH_lyfePAY
  * @version  1.0.7
  */
 
-class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
+class WC_Gateway_ACH_lyfePAY extends WC_Payment_Gateway
 {
     /**
      * Payment gateway instructions.
@@ -41,15 +41,15 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
      * @var string
      *
      */
-    public $id = 'ach-easymerchant';
+    public $id = 'ach-lyfePAY';
 
     public function __construct()
     {
-        $this->id = 'ach-easymerchant';
+        $this->id = 'ach-lyfePAY';
         $this->has_fields = true;
-        $this->method_title = 'ACH EasyMerchant';
-        $this->title = 'ACH EasyMerchant';
-        $this->method_description = 'ACH EasyMerchant Gateway Options';
+        $this->method_title = 'ACH lyfePAY';
+        $this->title = 'ACH lyfePAY';
+        $this->method_description = 'ACH lyfePAY Gateway Options';
         $this->supports = array(
             'subscriptions',
             'products',
@@ -59,6 +59,8 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             'subscription_amount_changes',
             'subscription_date_changes',
             'subscription_payment_method_change',
+            'subscription_payment_method_change_customer',
+            'subscription_payment_method_change_admin',
             'multiple_subscriptions',
             'pre-orders',
             'add_payment_method',
@@ -69,14 +71,14 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
         $this->init_settings();
         $this->enabled = $this->get_option('enabled');
         $this->testmode = 'yes' === $this->get_option('test_mode');
-        if ($this->testmode == 'yes') {
+        if ($this->testmode == 'yes') { // Arvind please check if this is correct and make all testmode code same
             $this->api_key = $this->get_option('test_api_key');
             $this->secret_key = $this->get_option('test_secret_key');
-            $this->api_base_url = 'https://stage-api.stage-easymerchant.io/';
+            $this->api_base_url = 'https://stage-api.stage-easymerchant.io';
         } else {
             $this->api_key = $this->get_option('api_key');
             $this->secret_key = $this->get_option('api_secret');
-            $this->api_base_url = 'https://api.easymerchant.io/';
+            $this->api_base_url = 'https://api.easymerchant.io';
         }
         $this->capture = 'yes' === $this->get_option('capture', 'yes');
         $this->saved_cards = 'yes' === $this->get_option('saved_cards');
@@ -90,65 +92,65 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
     {
         $this->form_fields = array(
             'enabled' => array(
-                'title' => __('Enable/Disable', 'woocommerce-easymerchant'),
+                'title' => __('Enable/Disable', 'woocommerce-lyfePAY'),
                 'type' => 'checkbox',
-                'label' => __('Enable', 'woocommerce-easymerchant'),
+                'label' => __('Enable', 'woocommerce-lyfePAY'),
                 'default' => 'no'
             ),
             'title' => array(
-                'title'       => __('Title', 'woocommerce-easymerchant'),
+                'title'       => __('Title', 'woocommerce-lyfePAY'),
                 'type'        => 'text',
-                'description' => __('This controls the title which the user sees during checkout.', 'woocommerce-easymerchant'),
-                'default'     => __('Bank Payment', 'woocommerce-easymerchant'),
+                'description' => __('This controls the title which the user sees during checkout.', 'woocommerce-lyfePAY'),
+                'default'     => __('Bank Payment', 'woocommerce-lyfePAY'),
                 'desc_tip'    => true
             ),
             'description' => array(
-                'title'       => __('Description', 'woocommerce-easymerchant'),
+                'title'       => __('Description', 'woocommerce-lyfePAY'),
                 'type'        => 'text',
-                'description' => __('This controls the description which the user sees during checkout.', 'woocommerce-easymerchant'),
+                'description' => __('This controls the description which the user sees during checkout.', 'woocommerce-lyfePAY'),
                 'default'     => 'Pay your bill via ACH Merchant.',
                 'desc_tip'    => true
             ),
             'api_key' => array(
-                'title' => __('API Key', 'woocommerce-easymerchant'),
-                'description' => __('Get your API key from AchMerchant.', 'woocommerce-easymerchant'),
+                'title' => __('API Key', 'woocommerce-lyfePAY'),
+                'description' => __('Get your API key from AchMerchant.', 'woocommerce-lyfePAY'),
                 'type' => 'text',
                 'default' => '',
                 'desc_tip' => true,
             ),
             'api_secret' => array(
-                'title' => __('API Secret', 'woocommerce-easymerchant'),
-                'description' => __('Get your API secret from AchMerchant.', 'woocommerce-easymerchant'),
+                'title' => __('API Secret', 'woocommerce-lyfePAY'),
+                'description' => __('Get your API secret from AchMerchant.', 'woocommerce-lyfePAY'),
                 'type' => 'text',
                 'default' => '',
                 'desc_tip' => true,
             ),
             'test_mode' => array(
-                'title' => __('Test Mode', 'woocommerce-easymerchant'),
-                'label' => __('Enable Test Mode', 'woocommerce-easymerchant'),
+                'title' => __('Test Mode', 'woocommerce-lyfePAY'),
+                'label' => __('Enable Test Mode', 'woocommerce-lyfePAY'),
                 'type' => 'checkbox',
                 'default'     => 'yes',
                 'desc_tip'    => true
             ),
-            'test_secret_key' => array(
-                'title'       => __('Test Secret Key', 'woocommerce-easymerchant'),
+            'test_api_key' => array(
+                'title'       => __('Test API Key', 'woocommerce-lyfePAY'),
                 'type'        => 'text',
-                'description' => __('Get your API keys from your AchMerchant account.', 'woocommerce-easymerchant'),
+                'description' => __('Get your API keys from your Ach lyfePAY account.', 'woocommerce-lyfePAY'),
                 'default'     => '',
                 'desc_tip'    => true,
             ),
-            'test_api_key' => array(
-                'title'       => __('Test API Key', 'woocommerce-easymerchant'),
+            'test_secret_key' => array(
+                'title'       => __('Test Secret Key', 'woocommerce-lyfePAY'),
                 'type'        => 'text',
-                'description' => __('Get your API keys from your AchMerchant account.', 'woocommerce-easymerchant'),
+                'description' => __('Get your API keys from your Ach lyfePAY account.', 'woocommerce-lyfePAY'),
                 'default'     => '',
                 'desc_tip'    => true,
             ),
             'capture' => array(
-                'title'       => __('Capture', 'woocommerce-easymerchant'),
-                'label'       => __('Capture charge immediately', 'woocommerce-easymerchant'),
+                'title'       => __('Capture', 'woocommerce-lyfePAY'),
+                'label'       => __('Capture charge immediately', 'woocommerce-lyfePAY'),
                 'type'        => 'checkbox',
-                'description' => __('Whether or not to immediately capture the charge. When unchecked, the charge issues an authorization and will need to be captured later. Uncaptured charges expire in 7 days.', 'woocommerce-easymerchant'),
+                'description' => __('Whether or not to immediately capture the charge. When unchecked, the charge issues an authorization and will need to be captured later. Uncaptured charges expire in 7 days.', 'woocommerce-lyfePAY'),
                 'default'     => 'yes',
                 'desc_tip'    => true,
             ),
@@ -199,11 +201,12 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             "zip"               => $order->shipping_postcode,
             "country"           => $order->billing_country,
         ]);
-        $response = wp_remote_post($this->api_base_url . 'api/v1/customers/', array(
+        $response = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
             'method'    => 'POST',
             'headers'   => array(
                 'X-Api-Key'      => $this->api_key,
                 'X-Api-Secret'   => $this->secret_key,
+                'User-Agent: ' . LYFE_APP_NAME,
                 'Content-Type'   => 'application/json',
             ),
             'body'               => $customer_details,
@@ -239,11 +242,12 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
                 'routing_number'    => $routing_number,
                 'account_type'      => $account_type,
             ]);
-            $achCharge = wp_remote_post($this->api_base_url . 'api/v1/ach/charge', array(
+            $achCharge = wp_remote_post($this->api_base_url . '/api/v1/ach/charge', array(
                 'method'    => 'POST',
                 'headers'   => array(
                     'X-Api-Key'      => $this->api_key,
                     'X-Api-Secret'   => $this->secret_key,
+                    'User-Agent: ' . LYFE_APP_NAME,
                     'Content-Type'   => 'application/json',
                 ),
                 'body'               => $body,
@@ -265,7 +269,9 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
-
+        if (!$amount || $amount < 1) {
+            return new WP_Error('simplify_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1');
+        }
         $transaction_id = get_post_meta($order_id, '_transaction_id', true);
         // $curl = $this->get_curl();
         // $order_data = get_post_meta($order_id);
@@ -279,11 +285,12 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             $post['test_mode'] = true;
         }
 
-        $refundAmount = wp_remote_post($this->api_base_url . 'api/v1/refund/', array(
+        $refundAmount = wp_remote_post($this->api_base_url . '/api/v1/refunds/', array(
             'method'    => 'POST',
             'headers'   => array(
                 'X-Api-Key'      => $this->api_key,
                 'X-Api-Secret'   => $this->secret_key,
+                'User-Agent: ' . LYFE_APP_NAME,
                 'Content-Type'   => 'application/json',
             ),
             'body'               => $post,
@@ -295,7 +302,7 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
         if ($refund_data['status']) {
             $order = new WC_Order($order_id);
             // create the note
-            $order->add_order_note($refund_data['message'] . ' transaction_id ' . $refund_data['refund_id']);
+            $order->add_order_note('Refunded $' . $amount . ' - Refund ID: ' . $refund_data['refund_id'] . ' - Reason: ' . $reason);
             return true;
         } else {
             return new WP_Error('simplify_refund_error', $refund_data['refund_id']);

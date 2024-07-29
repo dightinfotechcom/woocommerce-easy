@@ -1,12 +1,12 @@
 <?php
 
 /**
- * Plugin Name: WooCommerce Easymerchant
+ * Plugin Name: lyfePAY
  * Plugin URI: https://easymerchant.io/
- * Description: Adds the Easymerchant gateway to your WooCommerce website.
- * Version: 2.0.1
+ * Description: Adds the lyfePAY gateway to your WooCommerce website.
+ * Version: 3.0.2
  *
- * Author: Easymerchant
+ * Author: lyfePAY
  * Author URI: https://easymerchant.io/
  *
  * Text Domain: woocommerce-easymerchant
@@ -24,6 +24,9 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!defined('LYFE_APP_NAME')) {
+	define('LYFE_APP_NAME', 'lyfePAYWooCommerce/3.0.2');
+}
 
 /**
  * function to check if woocommerce is installed and activated
@@ -35,7 +38,7 @@ function img_dependency_error_woo()
 ?>
 	<div class="notice notice-error is-dismissible">
 		<p>
-			<?php _e('Easy Merchant requires Woocommerce plugin installed and activated!', 'woocommerce-easymerchant'); ?>
+			<?php _e('lyfePAY requires Woocommerce plugin installed and activated!', 'woocommerce-lyfePAY'); ?>
 		</p>
 	</div>
 <?php
@@ -50,24 +53,24 @@ function img_dependency_error_curl()
 ?>
 	<div class="notice notice-error is-dismissible">
 		<p>
-			<?php _e('Easy Merchant requires PHP CURL installed on this server!', 'woocommerce-easymerchant'); ?>
+			<?php _e('Easy Merchant requires PHP CURL installed on this server!', 'woocommerce-lyfePAY'); ?>
 		</p>
 	</div>
 <?php
 }
 
-function do_ssl_check()
-{
-	if ('yes' != $this->stripe_sandbox && "no" == get_option('woocommerce_force_ssl_checkout') && "yes" == $this->enabled) {
-		echo "<div class=\"error\"><p>" . sprintf(__("<strong>%s</strong> is enabled and WooCommerce is not forcing the SSL on your checkout page. Please ensure that you have a valid SSL certificate and that you are <a href=\"%s\">forcing the checkout pages to be secured.</a>"), $this->method_title, admin_url('admin.php?page=wc-settings&tab=checkout')) . "</p></div>";
-	}
-}
+// function do_ssl_check()
+// {
+// 	if ('yes' != $this->stripe_sandbox && "no" == get_option('woocommerce_force_ssl_checkout') && "yes" == $this->enabled) {
+// 		echo "<div class=\"error\"><p>" . sprintf(__("<strong>%s</strong> is enabled and WooCommerce is not forcing the SSL on your checkout page. Please ensure that you have a valid SSL certificate and that you are <a href=\"%s\">forcing the checkout pages to be secured.</a>"), $this->method_title, admin_url('admin.php?page=wc-settings&tab=checkout')) . "</p></div>";
+// 	}
+// }
 /**
- * WC Easymerchant gateway plugin class.
+ * WC lyfePAY gateway plugin class.
  *
- * @class WC_Easymerchant_Payments
+ * @class WC_lyfePAY_Payments
  */
-class WC_Easymerchant_Payments
+class WC_lyfePAY_Payments
 {
 
 	/**
@@ -217,11 +220,11 @@ class WC_Easymerchant_Payments
 			$this->pre_order_enabled = true;
 		}
 		if (class_exists('WC_Payment_Gateway')) {
-			include_once('includes/class-wc-gateway-easymerchant.php');
-			include_once('includes/class-wc-gateway-ach-merchant.php');
+			include_once('includes/class-wc-gateway-lyfePAY.php');
+			include_once('includes/class-wc-gateway-ach-lyfePAY.php');
 			if ($this->subscription_support_enabled) {
-				include_once('includes/class-wc-gateway-easymerchant-addons.php');
-				include_once('includes/class-wc-gateway-achmerchant-addons.php');
+				include_once('includes/class-wc-gateway-lyfePAY-addons.php');
+				include_once('includes/class-wc-gateway-ach-lyfePAY-addons.php');
 			}
 		}
 		add_filter('woocommerce_payment_gateways', array($this, 'add_gateways'));
@@ -231,22 +234,22 @@ class WC_Easymerchant_Payments
 	 */
 	public static function init()
 	{
-		//Easymerchant gateway class.
+		//lyfePAY gateway class.
 		add_action('plugins_loaded', array(__CLASS__, 'includes'), 0);
-		// Make theEasymerchant gateway available to WC.
+		// Make thelyfePAY gateway available to WC.
 		add_filter('woocommerce_payment_gateways', array(__CLASS__, 'add_gateway'));
 		// Registers WooCommerce Blocks integration.
-		add_action('woocommerce_blocks_loaded', array(__CLASS__, 'woocommerce_gateway_easymerchant_woocommerce_block_support'));
+		add_action('woocommerce_blocks_loaded', array(__CLASS__, 'woocommerce_gateway_lyfePAY_woocommerce_block_support'));
 	}
 
 	/**
-	 * Add the Easymerchant gateway to the list of available gateways.
+	 * Add the lyfePAY gateway to the list of available gateways.
 	 *
 	 * @param array
 	 */
 	public static function add_gateway($gateways)
 	{
-		$options = get_option('woocommerce_dummy_settings', array());
+		$options = get_option('woocommerce_lyfePAY_settings', array());
 
 		if (isset($options['hide_for_non_admin_users'])) {
 			$hide_for_non_admin_users = $options['hide_for_non_admin_users'];
@@ -255,8 +258,8 @@ class WC_Easymerchant_Payments
 		}
 
 		if (('yes' === $hide_for_non_admin_users && current_user_can('manage_options')) || 'no' === $hide_for_non_admin_users) {
-			$gateways[] = 'WC_Gateway_Dummy';
-			$gateways[] = 'WC_Gateway_ACH_Easymerchant';
+			$gateways[] = 'WC_Gateway_lyfePAY';
+			$gateways[] = 'WC_Gateway_ACH_lyfePAY';
 		}
 		return $gateways;
 	}
@@ -267,11 +270,11 @@ class WC_Easymerchant_Payments
 	public function add_gateways($methods)
 	{
 		if ($this->subscription_support_enabled || $this->pre_order_enabled) {
-			$methods[] = 'WC_Gateway_Easymerchant_Addons';
-			$methods[] = 'WC_Gateway_ACHmerchant_Addons';
+			$methods[] = 'WC_Gateway_lyfePAY_Addons';
+			$methods[] = 'WC_Gateway_ACHlyfePAY_Addons';
 		} else {
-			$methods[] = 'WC_Gateway_Dummy';
-			$methods[] = 'WC_Gateway_ACH_Easymerchant';
+			$methods[] = 'WC_Gateway_lyfePAY';
+			$methods[] = 'WC_Gateway_ACH_lyfePAY';
 		}
 		return $methods;
 	}
@@ -295,28 +298,38 @@ class WC_Easymerchant_Payments
 	{
 		$order = wc_get_order($order_id);
 
-		if ('easymerchant' === $order->payment_method) {
+		if ('lyfePAY' === $order->payment_method) {
 			$charge = get_post_meta($order_id, '_transaction_id', true);
 			if ($charge) {
 				$curl = $this->get_curl2();
-				$url = 'http://stage-api.easymerchant-api.test/';
-				$options = get_option('woocommerce_easymerchant_settings');
-				curl_setopt($curl, CURLOPT_URL, $url . 'api/v1/capture');
+				$mode = get_option('test_mode');
+				if ($mode) {
+					$api_base_url = "https://stage-api.stage-easymerchant.io";
+					$api_key = get_option('test_api_key');
+					$secret_key = get_option('test_secret_key');
+				} else {
+					$api_base_url = "https://api.easymerchant.io";
+					$api_key = get_option('api_key');
+					$secret_key = get_option('api_secret');
+				}
+				$options = get_option('woocommerce_lyfePAY_settings');
+				curl_setopt($curl, CURLOPT_URL, $api_base_url . '/api/v1/capture');
 				curl_setopt($curl, CURLOPT_POST, 'true');
 				curl_setopt($curl, CURLOPT_POSTFIELDS, array('charge_id' => $charge));
 				curl_setopt(
 					$curl,
 					CURLOPT_HTTPHEADER,
 					array(
-						'X-Api-Key: ' . $options['api_key'],
-						'X-Api-Secret: ' . $options['api_secret']
+						'X-Api-Key: ' . $api_key,
+						'X-Api-Secret: ' . $secret_key,
+						'User-Agent: ' . LYFE_APP_NAME,
 					)
 				);
 				$resp = json_decode(curl_exec($curl));
 				if (is_wp_error($resp)) {
-					$order->add_order_note(__('Unable to capture charge!', 'woocommerce-easymerchant') . ' ' . $resp->get_error_message());
+					$order->add_order_note(__('Unable to capture charge!', 'woocommerce-lyfePAY') . ' ' . $resp->get_error_message());
 				} else {
-					$order->add_order_note(sprintf(__('EasyMerchant charge complete (Charge ID: %s)', 'woocommerce-easymerchant'), $resp->charge_id));
+					$order->add_order_note(sprintf(__('lyfePAY charge complete (Charge ID: %s)', 'woocommerce-lyfePAY'), $resp->charge_id));
 					// Store other data such as fees
 					update_post_meta($order->id, '_transaction_id', $resp->charge_id);
 				}
@@ -328,7 +341,7 @@ class WC_Easymerchant_Payments
 	public function img_woocommerce_addon_settings_link($actions)
 	{
 		$settinglinks = array(
-			'<a href="' . admin_url('admin.php?page=wc-settings&tab=checkout&section=easymerchant') . '">Settings</a>',
+			'<a href="' . admin_url('admin.php?page=wc-settings&tab=checkout&section=lyfePAY') . '">Settings</a>',
 		);
 		$actions = array_merge($actions, $settinglinks);
 		return $actions;
@@ -338,10 +351,10 @@ class WC_Easymerchant_Payments
 	 */
 	public static function includes()
 	{
-		// Make the WC_Gateway_Easymerchant class available.
+		// Make the WC_Gateway_lyfePAY class available.
 		if (class_exists('WC_Payment_Gateway')) {
-			require_once 'includes/class-wc-gateway-easymerchant.php';
-			require_once 'includes/class-wc-gateway-ach-merchant.php';
+			require_once 'includes/class-wc-gateway-lyfePAY.php';
+			require_once 'includes/class-wc-gateway-ach-lyfePAY.php';
 		}
 	}
 
@@ -370,11 +383,13 @@ class WC_Easymerchant_Payments
 	 */
 	function get_user_meta_data()
 	{
-		$user_id = get_current_user_id(); // Get the current user ID
+		// Get the current user ID
+		$user_id = get_current_user_id();
 		if (!$user_id) {
-			return new WP_Error('no_user', __('No user is logged in', 'text-domain'), array('status' => 401));
+			return new WP_Error('no_user', __('No user is logged in', 'woocommerce-lyfePAY'), array('status' => 401));
 		}
-		$customer_id = get_user_meta($user_id, '_customer_id', true); // Get the customer ID from user meta
+		// Get the customer ID from user meta
+		$customer_id = get_user_meta($user_id, '_customer_id', true);
 		// Return the data as a JSON response
 		return rest_ensure_response(array(
 			'user_id' => $user_id,
@@ -404,10 +419,11 @@ class WC_Easymerchant_Payments
 			$params = http_build_query(array('customer' => $im_cus_id));
 			curl_setopt($curl, CURLOPT_POST, false);
 			curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "GET");
-			curl_setopt($curl, CURLOPT_URL, $api_base_url . "api/v1/card?$params");
+			curl_setopt($curl, CURLOPT_URL, $api_base_url . "/api/v1/card?$params");
 			curl_setopt($curl, CURLOPT_HTTPHEADER, array(
 				'X-Api-Key: ' . $api_key,
-				'X-Api-Secret: ' . $secret_key
+				'X-Api-Secret: ' . $secret_key,
+				'User-Agent: ' . LYFE_APP_NAME,
 			));
 
 			$response = curl_exec($curl);
@@ -430,20 +446,20 @@ class WC_Easymerchant_Payments
 	/**
 	 * Registers WooCommerce Blocks integration.
 	 */
-	public static function woocommerce_gateway_easymerchant_woocommerce_block_support()
+	public static function woocommerce_gateway_lyfePAY_woocommerce_block_support()
 	{
 		if (class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType')) {
-			require_once 'includes/blocks/class-wc-dummy-payments-blocks.php';
-			require_once 'includes/blocks/class-wc-ach-easymerchant-payments-blocks.php';
+			require_once 'includes/blocks/class-wc-lyfePAY-payments-blocks.php';
+			require_once 'includes/blocks/class-wc-ach-lyfePAY-payments-blocks.php';
 			add_action(
 				'woocommerce_blocks_payment_method_type_registration',
 				function (Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry) {
-					$payment_method_registry->register(new WC_Gateway_Easymerchant_Blocks_Support());
-					$payment_method_registry->register(new WC_Gateway_ACH_Easymerchant_Blocks_Support());
+					$payment_method_registry->register(new WC_Gateway_lyfePAY_Blocks_Support());
+					$payment_method_registry->register(new WC_Gateway_ACH_lyfePAY_Blocks_Support());
 				}
 			);
 		}
 	}
 }
 
-WC_Easymerchant_Payments::init();
+WC_lyfePAY_Payments::init();

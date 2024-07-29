@@ -7,11 +7,11 @@ import { getSetting } from "@woocommerce/settings";
 import { useState, useEffect } from "@wordpress/element";
 import axios from "axios";
 
-const settings = getSetting("easymerchant_data", {});
+const settings = getSetting("lyfePAY_data", {});
 const settings2 = getSetting("ach_data", {});
 
-const defaultLabel = __("Easymerchant", "woo-gutenberg-products-block");
-const defaultLabel2 = __("ACH Easymerchant", "woo-gutenberg-products-block");
+const defaultLabel = __("lyfePAY", "woo-gutenberg-products-block");
+const defaultLabel2 = __("ACH lyfePAY", "woo-gutenberg-products-block");
 
 const label = decodeEntities(settings.title) || defaultLabel;
 const label2 = decodeEntities(settings.title) || defaultLabel2;
