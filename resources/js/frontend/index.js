@@ -7,21 +7,21 @@ import { getSetting } from "@woocommerce/settings";
 import { useState, useEffect } from "@wordpress/element";
 import axios from "axios";
 
-const settings = getSetting("dummy_data", {});
+const settings = getSetting("easymerchant_data", {});
+const settings2 = getSetting("ach_data", {});
 
 const defaultLabel = __("Easymerchant", "woo-gutenberg-products-block");
 const defaultLabel2 = __("ACH Easymerchant", "woo-gutenberg-products-block");
 
 const label = decodeEntities(settings.title) || defaultLabel;
 const label2 = decodeEntities(settings.title) || defaultLabel2;
+const { CART_STORE_KEY } = window.wc.wcBlocksData;
 
 const PaymentFields = () => {
 	const [cards, setCards] = useState([]);
 	const [useSavedCard, setUseSavedCard] = useState(false);
 	const [showNewCardForm, setShowNewCardForm] = useState(true);
-	const [userId, setUserId] = useState(null);
 	const [customerId, setCustomerId] = useState(null);
-	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [cardDetails, setCardDetails] = useState({});
 	const [errors, setErrors] = useState({
@@ -29,55 +29,6 @@ const PaymentFields = () => {
 		cardExpiry: "",
 		cardCVC: "",
 	});
-
-	useEffect(() => {
-		// Fetch user data to get the user ID
-		const fetchUserData = async () => {
-			try {
-				const response = await axios.get(`/wooeasy/wp-json/wp/v2/users`);
-				if (response.data && response.data.length > 0) {
-					const user = response.data[0];
-					setUserId(user.id);
-				} else {
-					setError("No user data found");
-				}
-			} catch (error) {
-				setError("Error fetching user data");
-				console.error("Error fetching user data:", error);
-			} finally {
-				setLoading(false);
-			}
-		};
-		fetchUserData();
-	}, []);
-
-	useEffect(() => {
-		// const fetchCustomerData = async () => {
-		// 	try {
-		// 		const cardResponse = await axios.get(
-		// 			"https://stage-api.stage-easymerchant.io/api/v1/customers/",
-		// 			{
-		// 				headers: {
-		// 					"X-Api-Key": apiKey,
-		// 					"X-Api-Secret": secretKey,
-		// 					"Content-Type": "application/json",
-		// 				},
-		// 			}
-		// 		);
-		// 		if (cardResponse.customer && cardResponse.customer.length > 0) {
-		// 			setCustomerId(cardResponse.customer.user_id);
-		// 		} else {
-		// 			setError("No customer data found");
-		// 		}
-		// 	} catch (error) {
-		// 		setError("Error fetching customer data not fund");
-		// 		console.error("Error fetching customer data", error);
-		// 	} finally {
-		// 		setLoading(false);
-		// 	}
-		// };
-		// fetchCustomerData();
-	}, []);
 
 	const handleCardChange = (event) => {
 		setUseSavedCard(event.target.value === "exist");
@@ -142,66 +93,9 @@ const PaymentFields = () => {
 		}
 
 		setCardDetails({ ...cardDetails, [name]: formattedValue });
-
-		setCardDetails((prevDetails) => {
-			const updatedDetails = { ...prevDetails, [name]: formattedValue };
-			// Save card details in session storage with a timestamp
-			const expiryTime = new Date().getTime() + 5 * 60 * 1000; // 5 minutes from now
-			sessionStorage.setItem(
-				"cardDetails",
-				JSON.stringify({ ...updatedDetails, expiryTime })
-			);
-			return updatedDetails;
-		});
-		setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
+		setErrors({ ...errors, [name]: error });
 	};
-	const checkSessionExpiry = () => {
-		const storedData = sessionStorage.getItem("cardDetails");
-		if (storedData) {
-			const { expiryTime, ...details } = JSON.parse(storedData);
-			const now = new Date().getTime();
-			if (now > expiryTime) {
-				sessionStorage.removeItem("cardDetails");
-			}
-		}
-	};
-	checkSessionExpiry();
-	setInterval(checkSessionExpiry, 1000 * 60);
 
-	useEffect(() => {
-		// const fetchCardData = async () => {
-		if (customerId) {
-			// 	try {
-			// 		const response = await axios.get(
-			// 			`https://stage-api.stage-easymerchant.io/api/v1/cards/${customerId}/cards`,
-			// 			{
-			// 				headers: {
-			// 					"X-Api-Key": apiKey,
-			// 					"X-Api-Secret": secretKey,
-			// 					"Content-Type": "application/json",
-			// 				},
-			// 			}
-			// 		);
-			// 		if (response.data && response.data.length > 0) {
-			// 			setCards(response.data.Cards);
-			// 		} else {
-			// 			setError("No card data found");
-			// 		}
-			// 	} catch (error) {
-			// 		setError("Error fetching card data");
-			// 		console.error("Error fetching card data:", error);
-			// 	} finally {
-			// 		setLoading(false);
-			// 	}
-			// };
-		}
-
-		// fetchCardData();
-	}, []);
-
-	if (loading) {
-		return <p>{__("Loading", "woocommerce-easymerchant")}</p>;
-	}
 	if (error) {
 		return <p>{error}</p>;
 	}
@@ -360,27 +254,10 @@ const PaymentFields2 = () => {
 		let formattedValue = value;
 		setAchDetails((prevDetails) => {
 			const updatedDetails = { ...prevDetails, [name]: formattedValue };
-			// Set cookies for ACH details
-			const expiryTime = new Date().getTime() + 5 * 60 * 1000;
-			sessionStorage.setItem(
-				"achDetails",
-				JSON.stringify({ ...updatedDetails, expiryTime })
-			);
 			return updatedDetails;
 		});
 	};
-	const checkSessionExpiry = () => {
-		const storedData = sessionStorage.getItem("cardDetails");
-		if (storedData) {
-			const { expiryTime, ...details } = JSON.parse(storedData);
-			const now = new Date().getTime();
-			if (now > expiryTime) {
-				sessionStorage.removeItem("cardDetails");
-			}
-		}
-	};
-	checkSessionExpiry();
-	setInterval(checkSessionExpiry, 1000 * 60);
+
 	return (
 		<div className="ach-payment-fields">
 			<div className="fieldset-input">
@@ -429,7 +306,7 @@ const PaymentFields2 = () => {
 							<option value="">Select</option>
 							<option value="checking">Checking</option>
 							<option value="savings">Savings</option>
-							<option value="general-ledger">General Ledger</option>
+							<option value="ledger">General Ledger</option>
 						</select>
 					</p>
 				</fieldset>
@@ -441,10 +318,228 @@ const PaymentFields2 = () => {
 /**
  * Content component
  */
-const Content = () => {
+const Content = (props) => {
+	const { eventRegistration, emitResponse } = props;
+	const { onPaymentSetup } = eventRegistration;
+	const headers = {
+		"X-Api-Key": "d024a5f6f189be781ebd30d10",
+		"X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
+		"Content-Type": "application/json",
+	};
+	// const store = select(CART_STORE_KEY);
+	// const cartData = store.getCartData();
+	// const customerData = store.getCustomerData();
+	// const cartTotals = store.getCartTotals();
+	// const cartMeta = store.getCartMeta();
+
+	const createCustomer = async (customerPayload) => {
+		try {
+			const response = await axios.post(
+				"https://stage-api.stage-easymerchant.io/api/v1/customers",
+				customerPayload,
+				{ headers }
+			);
+			if (response.data.success) {
+				return response.data.customerId;
+			} else {
+				throw new Error(response.data.message);
+			}
+		} catch (error) {
+			throw new Error(
+				error.message || "There was an error creating the customer"
+			);
+		}
+	};
+	const makePayment = async (paymentData) => {
+		try {
+			const response = await axios.post(
+				"https://stage-api.stage-easymerchant.io/api/v1/charge",
+				paymentData,
+				{ headers }
+			);
+			if (response.data.success) {
+				return {
+					type: emitResponse.responseTypes.SUCCESS,
+					meta: {
+						paymentMethodData: response.data.paymentMethodData,
+					},
+				};
+			} else {
+				throw new Error(response.data.message);
+			}
+		} catch (error) {
+			return {
+				type: emitResponse.responseTypes.ERROR,
+				message: error.message || "There was an error processing your payment",
+			};
+		}
+	};
+
+	const getCustomerData = async () => {
+		try {
+			const consumerKey = "ck_8695bd7466cbf252a872cd7b5fd69abc739f1d53";
+			const consumerSecret = "cs_bbfc9e9f63f6f44a966a716568d7d43a4801be79";
+
+			// Encode the keys for Basic Auth
+			const authHeader = `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}`;
+			console.log(authHeader);
+			const api = axios.create({
+				baseURL: "https://localhost/wooeasy/wp-json/wc/v3/customers",
+				headers: {
+					Authorization: authHeader,
+					"Content-Type": "application/json",
+				},
+			});
+			console.log(api);
+
+			// const response = await api.get(
+			// 	"https://localhost/wooeasy/wp-json/wc/v3/customers"
+			// );
+			// return response.data;
+			// console.log(response.data);
+		} catch (error) {
+			console.error("Error fetching customer data:", error);
+			return null;
+		}
+	};
+	useEffect(() => {
+		const unsubscribe = onPaymentSetup(async () => {
+			const customerData = await getCustomerData();
+			const customerPayload = {
+				username: customerData.email,
+				email: customerData.email,
+				name: customerData.name,
+				address: customerData.address_1,
+				city: customerData.city,
+				state: customerData.state,
+				zip: customerData.postcode,
+				country: customerData.country,
+			};
+			try {
+				const customerId = await createCustomer(customerPayload);
+				const paymentData = {
+					payment_mode: "auth_and_capture",
+					card_number: document.querySelector("#card-number").value,
+					exp_month: document.querySelector("#card-expiry-month").value,
+					exp_year: document.querySelector("#card-expiry-year").value,
+					cvc: document.querySelector("#card-cvc").value,
+					currency: "usd",
+					cardholder_name: document.querySelector("#cardholder-name").value,
+					name: customerData.name,
+					email: customerData.email,
+					amount: "10.00",
+					description: "Payment through easymerchant",
+					customer_id: customerId,
+				};
+				return await makePayment(paymentData);
+			} catch (error) {
+				return {
+					type: emitResponse.responseTypes.ERROR,
+					message: error.message,
+				};
+			}
+		});
+		return () => {
+			unsubscribe();
+		};
+	}, [
+		emitResponse.responseTypes.ERROR,
+		emitResponse.responseTypes.SUCCESS,
+		onPaymentSetup,
+	]);
 	return <PaymentFields />;
 };
-const Content2 = () => {
+const Content2 = (props) => {
+	const { eventRegistration, emitResponse } = props;
+	const { onPaymentSetup } = eventRegistration;
+	const headers = {
+		"X-Api-Key": "d024a5f6f189be781ebd30d10",
+		"X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
+		"Content-Type": "application/json",
+	};
+	const createCustomer = async (customerData) => {
+		try {
+			const response = await axios.post(
+				"https://stage-api.stage-easymerchant.io/api/v1/customers",
+				customerData,
+				{ headers }
+			);
+			if (response.data.success) {
+				return response.data.customerId;
+			} else {
+				throw new Error(response.data.message);
+			}
+		} catch (error) {
+			throw new Error(
+				error.message || "There was an error creating the customer"
+			);
+		}
+	};
+	const makePayment = async (paymentData) => {
+		try {
+			const response = await axios.post(
+				"https://stage-api.stage-easymerchant.io/api/v1/charge",
+				paymentData,
+				{ headers }
+			);
+			if (response.data.success) {
+				return {
+					type: emitResponse.responseTypes.SUCCESS,
+					meta: {
+						paymentMethodData: response.data.paymentMethodData,
+					},
+				};
+			} else {
+				throw new Error(response.data.message);
+			}
+		} catch (error) {
+			return {
+				type: emitResponse.responseTypes.ERROR,
+				message: error.message || "There was an error processing your payment",
+			};
+		}
+	};
+
+	useEffect(() => {
+		const unsubscribe = onPaymentSetup(async () => {
+			const customerData = {
+				username: "arvind@arvind.com",
+				email: "arvind1@arvind.com",
+				name: "Dight",
+				address: "Miran Tower",
+				city: "Mohali",
+				state: "Punjab",
+				zip: "140306",
+				country: "IN",
+			};
+			try {
+				const customerId = await createCustomer(customerData);
+				const paymentData = {
+					amount: 2,
+					name: "Test ACH",
+					description: "test",
+					routing_number: "061000227",
+					account_number: "4761530001111118",
+					account_type: "checking",
+					entry_class_code: "WEB",
+				};
+				return await makePayment(paymentData);
+			} catch (error) {
+				return {
+					type: emitResponse.responseTypes.ERROR,
+					message: error.message,
+				};
+			}
+		});
+		return () => {
+			unsubscribe();
+		};
+	}, [
+		emitResponse.responseTypes.ERROR,
+		emitResponse.responseTypes.SUCCESS,
+		onPaymentSetup,
+	]);
+
 	return <PaymentFields2 />;
 };
 /**
@@ -486,7 +581,7 @@ const ACH = {
 	canMakePayment: () => true,
 	ariaLabel: label2,
 	supports: {
-		features: settings.supports,
+		features: settings2.supports,
 	},
 };
 registerPaymentMethod(ACH);

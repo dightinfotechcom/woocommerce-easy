@@ -25,6 +25,7 @@
 		"check-engines": "wp-scripts check-engines"
 	},
 	"dependencies": {
+		"@wordpress/data": "^10.4.0",
 		"axios": "^1.7.2"
 	}
 }

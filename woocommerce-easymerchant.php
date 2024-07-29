@@ -4,7 +4,7 @@
  * Plugin Name: WooCommerce Easymerchant
  * Plugin URI: https://easymerchant.io/
  * Description: Adds the Easymerchant gateway to your WooCommerce website.
- * Version: 1.0.9
+ * Version: 2.0.1
  *
  * Author: Easymerchant
  * Author URI: https://easymerchant.io/
@@ -141,6 +141,7 @@ class WC_Easymerchant_Payments
 	 */
 	protected function __construct()
 	{
+
 		add_action('admin_notices', array($this, 'admin_notices'), 15);
 		add_action('plugins_loaded', array($this, 'init_easy_merchant'));
 		add_action('rest_api_init', function () {
@@ -159,10 +160,10 @@ class WC_Easymerchant_Payments
 				}
 			));
 		});
-		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'img_woocommerce_addon_settings_link'));
 	}
 
-	function init_easy_merchant()
+
+	public function init_easy_merchant()
 	{
 		/**
 		 * Check if WooCommerce is active
@@ -183,6 +184,7 @@ class WC_Easymerchant_Payments
 
 		add_action('woocommerce_order_status_on-hold_to_processing', array($this, 'capture_payment'));
 		add_action('woocommerce_order_status_on-hold_to_completed', array($this, 'capture_payment'));
+		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'img_woocommerce_addon_settings_link'));
 	}
 	/**
 	 * Allow this class and other classes to add slug keyed notices (to avoid duplication)
@@ -215,7 +217,7 @@ class WC_Easymerchant_Payments
 			$this->pre_order_enabled = true;
 		}
 		if (class_exists('WC_Payment_Gateway')) {
-			include_once('includes/class-wc-gateway-dummy.php');
+			include_once('includes/class-wc-gateway-easymerchant.php');
 			include_once('includes/class-wc-gateway-ach-merchant.php');
 			if ($this->subscription_support_enabled) {
 				include_once('includes/class-wc-gateway-easymerchant-addons.php');
@@ -292,6 +294,7 @@ class WC_Easymerchant_Payments
 	public function capture_payment($order_id)
 	{
 		$order = wc_get_order($order_id);
+
 		if ('easymerchant' === $order->payment_method) {
 			$charge = get_post_meta($order_id, '_transaction_id', true);
 			if ($charge) {
@@ -322,16 +325,14 @@ class WC_Easymerchant_Payments
 	}
 
 	/*Plugin Settings Link*/
-	function img_woocommerce_addon_settings_link($links)
+	public function img_woocommerce_addon_settings_link($actions)
 	{
-		$settings_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=easymerchant">' . __('Easymerchant Settings', 'woocommerce-easymerchant') . '</a>';
-		$settings_ach_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=ach-easymerchant">' . __('ACH Settings', 'woocommerce-easymerchant') . '</a>';
-		// array_push($links, $settings_link);
-		array_unshift($links, $settings_link);
-		array_push($links, $settings_ach_link);
-		return $links;
+		$settinglinks = array(
+			'<a href="' . admin_url('admin.php?page=wc-settings&tab=checkout&section=easymerchant') . '">Settings</a>',
+		);
+		$actions = array_merge($actions, $settinglinks);
+		return $actions;
 	}
-
 	/**
 	 * Plugin includes.
 	 */
@@ -339,7 +340,7 @@ class WC_Easymerchant_Payments
 	{
 		// Make the WC_Gateway_Easymerchant class available.
 		if (class_exists('WC_Payment_Gateway')) {
-			require_once 'includes/class-wc-gateway-dummy.php';
+			require_once 'includes/class-wc-gateway-easymerchant.php';
 			require_once 'includes/class-wc-gateway-ach-merchant.php';
 		}
 	}

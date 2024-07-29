@@ -185,7 +185,7 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
 
         $order = wc_get_order($order_id);
         $user_id = get_current_user_id();
-        $im_cus_id = get_user_meta($user_id, '_customer_id', true);
+        // $im_cus_id = get_user_meta($user_id, '_customer_id', true);
         // Generate a random number between 1000 and 9999
         $randomNumber = rand(1000, 9999);
         $username = $order->shipping_first_name . $order->shipping_last_name . $randomNumber;
@@ -215,9 +215,9 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
 
         $account_number = $getAch['ach-account-number'] ?? '';
         $routing_number = $getAch['ach-routing-number'] ?? '';
-        $account_type = $getAch['ach-account-type'] ?? '';
+        $account_type   = $getAch['ach-account-type'] ?? '';
 
-        $card_details = json_encode([
+        $ach_details = json_encode([
             'description'    => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
             'account_number' => $account_number,
             'routing_number' => $routing_number,
@@ -237,7 +237,7 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
                 'currency'          => strtolower(get_woocommerce_currency()),
                 'account_number'    => $account_number,
                 'routing_number'    => $routing_number,
-                'account_type'      => 'saving',
+                'account_type'      => $account_type,
             ]);
             $achCharge = wp_remote_post($this->api_base_url . 'api/v1/ach/charge', array(
                 'method'    => 'POST',
@@ -249,93 +249,58 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
                 'body'               => $body,
             ));
             $createAchCharge     = wp_remote_retrieve_body($achCharge);
-            $achchargeResponse = json_decode($createAchCharge, true);
-        } else {
-            //existing customer and existing card
-            if ($_POST['achaccount'] != '' && $im_cus_id) {
-                $customer = $im_cus_id;
-                $card_id = $_POST['achaccount'];
-                $source = (object) array(
-                    'customer' => $customer,
-                    'source'   => $card_id
+            $achchargeResponse   = json_decode($createAchCharge, true);
+
+            if (isset($achchargeResponse['status']) && !empty($achchargeResponse['status'])) {
+                $order = new WC_Order($order_id);
+                $order->payment_complete();
+                $woocommerce->cart->empty_cart();
+                return array(
+                    'result' => 'success',
+                    'redirect' => $this->get_return_url($order)
                 );
-                // Store source to order meta.
-                $this->save_source($order, $source);
-            } else if ($im_cus_id) {
-                //existing customer and save new card
-
-                curl_setopt($curl, CURLOPT_URL, $this->api_base_url . 'api/v1/ach/charge');
-
-                $body = json_encode([
-                    'account_number'     => $account_number,
-                    'routing_number'    => $routing_number,
-                    'customer'            => $response_data['customer_id'],
-                ]);
-                $post['customer'] = $im_cus_id;
-                $card = wp_remote_post($this->api_base_url . 'api/v1/card', array(
-                    'method'    => 'POST',
-                    'headers'   => array(
-                        'X-Api-Key'     => $this->api_key,
-                        'X-Api-Secret'  => $this->secret_key,
-                        'Content-Type'  => 'application/json',
-                    ),
-                    'body'                => $body,
-                ));
-                $createCard = wp_remote_retrieve_body($card);
-                $cardResponse = json_decode($createCard, true);
-
-
-                if ($resp && $resp->status) {
-                    $source = (object) array(
-                        'customer' => $customer_id,
-                        'source'   => $resp->card_id
-                    );
-                    // Store source to order meta.
-                    $this->save_source($order, $source);
-                } else {
-                    wc_add_notice(__('Payment error:', 'woothemes') . ' ' . $resp->message, 'error');
-                    return false;
-                }
-            } else {
-                //new customer save customer and save card
-                curl_setopt($curl, CURLOPT_URL, $this->api_base_url . 'api/v1/customer');
-                curl_setopt($curl, CURLOPT_POST, 'true');
-                curl_setopt($curl, CURLOPT_POSTFIELDS, $customer_details);
-
-                $resp = json_decode(curl_exec($curl));
-
-                if ($resp && $resp->status) {
-                    $customer_id = $resp->customer_id;
-                    $card_details['customer'] = $customer_id;
-                    curl_setopt($curl, CURLOPT_URL, $this->api_base_url . 'api/v1/ach/charge');
-                    curl_setopt($curl, CURLOPT_POST, 'true');
-                    curl_setopt($curl, CURLOPT_POSTFIELDS, $card_details);
-
-                    $resp = json_decode(curl_exec($curl));
-
-                    if ($resp && $resp->status) {
-                        $source = (object) array(
-                            'customer' => $customer_id,
-                            'source'   => $resp->card_id
-                        );
-                        // Store source to order meta.
-                        $this->save_source($order, $source);
-                    } else {
-                        wc_add_notice(__('Payment error:', 'woothemes') . ' ' . $resp->message, 'error');
-                        return false;
-                    }
-                } else {
-                    wc_add_notice(__('Payment error:', 'woothemes') . ' ' . $resp->message, 'error');
-                    return false;
-                }
             }
-            $order = new WC_Order($order_id);
-            $order->payment_complete();
-            $woocommerce->cart->empty_cart();
         }
-        return array(
-            'result' => 'success',
-            'redirect' => $this->get_return_url($order)
+    }
+
+    public function process_refund($order_id, $amount = null, $reason = '')
+    {
+
+        $transaction_id = get_post_meta($order_id, '_transaction_id', true);
+        // $curl = $this->get_curl();
+        // $order_data = get_post_meta($order_id);
+
+        $post = array(
+            'charge_id' => $transaction_id,
+            'amount'     => $amount
         );
+
+        if ($this->testmode) {
+            $post['test_mode'] = true;
+        }
+
+        $refundAmount = wp_remote_post($this->api_base_url . 'api/v1/refund/', array(
+            'method'    => 'POST',
+            'headers'   => array(
+                'X-Api-Key'      => $this->api_key,
+                'X-Api-Secret'   => $this->secret_key,
+                'Content-Type'   => 'application/json',
+            ),
+            'body'               => $post,
+        ));
+
+        $refund_body = wp_remote_retrieve_body($refundAmount);
+        $refund_data = json_decode($refund_body, true);
+
+        if ($refund_data['status']) {
+            $order = new WC_Order($order_id);
+            // create the note
+            $order->add_order_note($refund_data['message'] . ' transaction_id ' . $refund_data['refund_id']);
+            return true;
+        } else {
+            return new WP_Error('simplify_refund_error', $refund_data['refund_id']);
+        }
+
+        return false;
     }
 }
