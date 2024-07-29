@@ -19,7 +19,7 @@ session_start();
  * @class    WC_Gateway_Easymerchant
  * @version  1.0.7
  */
-class WC_Gateway_Dummy extends WC_Payment_Gateway
+class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it properly, we do not want name it dummy class
 {
 
 	/**
@@ -62,6 +62,8 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 			'subscription_amount_changes',
 			'subscription_date_changes',
 			'subscription_payment_method_change',
+			'subscription_payment_method_change_customer',
+            'subscription_payment_method_change_admin',
 			'multiple_subscriptions',
 			'pre-orders',
 			'add_payment_method',
@@ -83,11 +85,11 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 		if ($this->testmode == 'yes') {
 			$this->api_key = $this->get_option('test_api_key');
 			$this->secret_key = $this->get_option('test_secret_key');
-			$this->api_base_url = 'https://stage-api.stage-easymerchant.io/';
+			$this->api_base_url = 'https://stage-api.stage-easymerchant.io';
 		} else {
 			$this->api_key = $this->get_option('api_key');
 			$this->secret_key = $this->get_option('api_secret');
-			$this->api_base_url = 'https://api.easymerchant.io/';
+			$this->api_base_url = 'https://api.easymerchant.io';
 		}
 		$this->capture = 'yes' === $this->get_option('capture', 'yes');
 		$this->saved_cards = 'yes' === $this->get_option('saved_cards');
@@ -157,7 +159,8 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($curl, CURLOPT_HTTPHEADER, array(
 			'X-Api-Key: ' . $this->api_key,
-			'X-Api-Secret: ' . $this->secret_key
+			'X-Api-Secret: ' . $this->secret_key,
+			'User-Agent: ' . LYFE_APP_NAME,
 		));
 		return $curl;
 	}
@@ -195,12 +198,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 		"country" 			=> $order->billing_country,
 	// 	]);
 
-	// 	$response = wp_remote_post($this->api_base_url . 'api/v1/customers/', array(
+	// 	$response = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
 	// 		'method'    => 'POST',
 	// 		'headers'   => array(
 	// 			'X-Api-Key'      => $this->api_key,
 	// 			'X-Api-Secret'   => $this->secret_key,
 	// 			'Content-Type'   => 'application/json',
+	// 			'User-Agent: ' . LYFE_APP_NAME,
 	// 		),
 	// 		'body'               => $customer_details,
 	// 	));
@@ -227,12 +231,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 		'customer' 			    => $response_data['customer_id'],
 	// 	]);
 
-	// 	$cardSaved = wp_remote_post($this->api_base_url . 'api/v1/cards/', array(
+	// 	$cardSaved = wp_remote_post($this->api_base_url . '/api/v1/cards/', array(
 	// 		'method'    => 'POST',
 	// 		'headers'   => array(
 	// 			'X-Api-Key'      => $this->api_key,
 	// 			'X-Api-Secret'   => $this->secret_key,
 	// 			'Content-Type'   => 'application/json',
+	// 			'User-Agent: ' . LYFE_APP_NAME,
 	// 		),
 	// 		'body'               => $card_details,
 	// 	));
@@ -240,12 +245,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 	$card_data = json_decode($card_body, true);
 	// 	//existing customer and save new card
 	// 	if ((($this->saved_cards == 'yes' && isset($_POST['wc-easymerchant-new-payment-method'])) || $force_customer) && $response_data['customer_id']) {
-	// 		$getCard = wp_remote_post($this->api_base_url . 'api/v1/cards/' . $response_data['customer_id'] . '/cards/', array(
+	// 		$getCard = wp_remote_post($this->api_base_url . '/api/v1/cards/' . $response_data['customer_id'] . '/cards/', array(
 	// 			'method'    => 'GET',
 	// 			'headers'   => array(
 	// 				'X-Api-Key'      => $this->api_key,
 	// 				'X-Api-Secret'   => $this->secret_key,
 	// 				'Content-Type'   => 'application/json',
+	// 				'User-Agent: ' . LYFE_APP_NAME,
 	// 			),
 	// 		));
 	// 		$card_list = wp_remote_retrieve_body($getCard);
@@ -266,12 +272,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 			'exp_year' 			=> $exp_year,
 	// 			'cvc'				=> $cvc,
 	// 		]);
-	// 		$charge = wp_remote_post($this->api_base_url . 'api/v1/charges', array(
+	// 		$charge = wp_remote_post($this->api_base_url . '/api/v1/charges', array(
 	// 			'method'    		=> 'POST',
 	// 			'headers'   		=> array(
 	// 				'X-Api-Key'     => $this->api_key,
 	// 				'X-Api-Secret'  => $this->secret_key,
 	// 				'Content-Type'  => 'application/json',
+	// 				'User-Agent: ' . LYFE_APP_NAME,
 	// 			),
 	// 			'body'				=> $body,
 	// 		));
@@ -299,12 +306,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 				'customer'			=> $response_data['customer_id'],
 	// 			]);
 	// 			$post['customer'] = $im_cus_id;
-	// 			$card = wp_remote_post($this->api_base_url . 'api/v1/card', array(
+	// 			$card = wp_remote_post($this->api_base_url . '/api/v1/card', array(
 	// 				'method'    => 'POST',
 	// 				'headers'   => array(
 	// 					'X-Api-Key'     => $this->api_key,
 	// 					'X-Api-Secret'  => $this->secret_key,
 	// 					'Content-Type'  => 'application/json',
+	// 					'User-Agent: ' . LYFE_APP_NAME,
 	// 				),
 	// 				'body'				=> $body,
 	// 			));
@@ -324,12 +332,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 			}
 	// 		} else {
 	// 			//new customer save customer and save card
-	// 			$customer = wp_remote_post($this->api_base_url . 'api/v1/customer', array(
+	// 			$customer = wp_remote_post($this->api_base_url . '/api/v1/customer', array(
 	// 				'method'    => 'POST',
 	// 				'headers'   => array(
 	// 					'X-Api-Key'     => $this->api_key,
 	// 					'X-Api-Secret'  => $this->secret_key,
 	// 					'Content-Type'  => 'application/json',
+	// 					'User-Agent: ' . LYFE_APP_NAME,
 	// 				),
 	// 				'body'				=> $customer_details,
 	// 			));
@@ -340,12 +349,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 				$customer_id = $customerResponse->customer_id;
 	// 				$card_details['customer'] = $customer_id;
 
-	// 				$cards = wp_remote_post($this->api_base_url . 'api/v1/card', array(
+	// 				$cards = wp_remote_post($this->api_base_url . '/api/v1/card', array(
 	// 					'method'    => 'POST',
 	// 					'headers'   => array(
 	// 						'X-Api-Key'     => $this->api_key,
 	// 						'X-Api-Secret'  => $this->secret_key,
 	// 						'Content-Type'  => 'application/json',
+	// 						'User-Agent: ' . LYFE_APP_NAME,
 	// 					),
 	// 					'body'				=> $card_details,
 	// 				));
@@ -415,12 +425,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 		"country" 			=> $order->billing_country,
 	// 	]);
 
-	// 	$response = wp_remote_post($this->api_base_url . 'api/v1/customers/', array(
+	// 	$response = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
 	// 		'method'    => 'POST',
 	// 		'headers'   => array(
 	// 			'X-Api-Key'      => $this->api_key,
 	// 			'X-Api-Secret'   => $this->secret_key,
 	// 			'Content-Type'   => 'application/json',
+	// 			'User-Agent: ' . LYFE_APP_NAME,
 	// 		),
 	// 		'body'               => $customer_details,
 	// 	));
@@ -448,12 +459,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 	// 	'cvc'				=> $cardCvv,
 	// 	// 	'customer' 			=> $response_data['customer_id'],
 	// 	// ]);
-	// 	// $cardSaved = wp_remote_post($this->api_base_url . 'api/v1/cards/', array(
+	// 	// $cardSaved = wp_remote_post($this->api_base_url . '/api/v1/cards/', array(
 	// 	// 	'method'    => 'POST',
 	// 	// 	'headers'   => array(
 	// 	// 		'X-Api-Key'      => $this->api_key,
 	// 	// 		'X-Api-Secret'   => $this->secret_key,
 	// 	// 		'Content-Type'   => 'application/json',
+	// 	'User-Agent: ' . LYFE_APP_NAME,
 	// 	// 	),
 	// 	// 	'body'               => $card_details,
 	// 	// ));
@@ -477,12 +489,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	// 		'cvc'				=> $cardCvv,
 	// 	]);
 
-	// 	$charge = wp_remote_post($this->api_base_url . 'api/v1/charges', array(
+	// 	$charge = wp_remote_post($this->api_base_url . '/api/v1/charges', array(
 	// 		'method'    		=> 'POST',
 	// 		'headers'   		=> array(
 	// 			'X-Api-Key'     => $this->api_key,
 	// 			'X-Api-Secret'  => $this->secret_key,
 	// 			'Content-Type'  => 'application/json',
+	// 			'User-Agent: ' . LYFE_APP_NAME,
 	// 		),
 	// 		'body'				=> $body,
 	// 	));
@@ -531,6 +544,9 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 	 */
 	public function process_refund($order_id, $amount = null, $reason = '')
 	{
+		if(!$amount || $amount < 1) {
+            return new WP_Error( 'simplify_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1' );
+        }
 
 		$transaction_id = get_post_meta($order_id, '_transaction_id', true);
 		// $curl = $this->get_curl();
@@ -545,12 +561,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 			$post['test_mode'] = true;
 		}
 
-		$refundAmount = wp_remote_post($this->api_base_url . 'api/v1/refund/', array(
+		$refundAmount = wp_remote_post($this->api_base_url . '/api/v1/refunds/', array(
 			'method'    => 'POST',
 			'headers'   => array(
 				'X-Api-Key'      => $this->api_key,
 				'X-Api-Secret'   => $this->secret_key,
 				'Content-Type'   => 'application/json',
+				'User-Agent: ' . LYFE_APP_NAME,
 			),
 			'body'               => $post,
 		));
@@ -561,7 +578,7 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 		if ($refund_data['status']) {
 			$order = new WC_Order($order_id);
 			// create the note
-			$order->add_order_note($refund_data['message'] . ' transaction_id ' . $refund_data['refund_id']);
+			$order->add_order_note('Refunded $' . $amount . ' - Refund ID: ' . $refund_data['refund_id'] . ' - Reason: ' . $reason);
 			return true;
 		} else {
 			return new WP_Error('simplify_refund_error', $refund_data['refund_id']);
@@ -623,15 +640,15 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 				'default'     => 'yes',
 				'desc_tip'    => true
 			),
-			'test_secret_key' => array(
-				'title'       => __('Test Secret Key', 'woocommerce'),
+			'test_api_key' => array(
+				'title'       => __('Test API Key', 'woocommerce'),
 				'type'        => 'text',
 				'description' => __('Get your API keys from your EasyMerchant account.', 'woocommerce'),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
-			'test_api_key' => array(
-				'title'       => __('Test API Key', 'woocommerce'),
+			'test_secret_key' => array(
+				'title'       => __('Test Secret Key', 'woocommerce'),
 				'type'        => 'text',
 				'description' => __('Get your API keys from your EasyMerchant account.', 'woocommerce'),
 				'default'     => '',
@@ -701,12 +718,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway
 			'card' => $card_id,
 		]);
 
-		$response = wp_remote_post($this->api_base_url . 'api/v1/charges', array(
+		$response = wp_remote_post($this->api_base_url . '/api/v1/charges', array(
 			'method'    => 'POST',
 			'headers'   => array(
 				'X-Api-Key'      => $this->api_key,
 				'X-Api-Secret'   => $this->secret_key,
 				'Content-Type'   => 'application/json',
+				'User-Agent: ' . LYFE_APP_NAME,
 			),
 			'body' => $body,
 		));

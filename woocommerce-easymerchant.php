@@ -4,7 +4,7 @@
  * Plugin Name: WooCommerce Easymerchant
  * Plugin URI: https://easymerchant.io/
  * Description: Adds the Easymerchant gateway to your WooCommerce website.
- * Version: 2.0.1
+ * Version: 3.0.2
  *
  * Author: Easymerchant
  * Author URI: https://easymerchant.io/
@@ -24,6 +24,9 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!defined('LYFE_APP_NAME')) {
+	define('LYFE_APP_NAME', 'lyfePAYWooCommerce/3.0.2');
+}
 
 /**
  * function to check if woocommerce is installed and activated
@@ -299,17 +302,27 @@ class WC_Easymerchant_Payments
 			$charge = get_post_meta($order_id, '_transaction_id', true);
 			if ($charge) {
 				$curl = $this->get_curl2();
-				$url = 'http://stage-api.easymerchant-api.test/';
+				$mode = get_option('test_mode');
+				if ($mode) {
+					$api_base_url = "https://stage-api.stage-easymerchant.io";
+					$api_key = get_option('test_api_key');
+					$secret_key = get_option('test_secret_key');
+				} else {
+					$api_base_url = "https://api.easymerchant.io";
+					$api_key = get_option('api_key');
+					$secret_key = get_option('api_secret');
+				}
 				$options = get_option('woocommerce_easymerchant_settings');
-				curl_setopt($curl, CURLOPT_URL, $url . 'api/v1/capture');
+				curl_setopt($curl, CURLOPT_URL, $api_base_url . '/api/v1/capture');
 				curl_setopt($curl, CURLOPT_POST, 'true');
 				curl_setopt($curl, CURLOPT_POSTFIELDS, array('charge_id' => $charge));
 				curl_setopt(
 					$curl,
 					CURLOPT_HTTPHEADER,
 					array(
-						'X-Api-Key: ' . $options['api_key'],
-						'X-Api-Secret: ' . $options['api_secret']
+						'X-Api-Key: ' . $api_key,
+						'X-Api-Secret: ' . $secret_key,
+						'User-Agent: ' . LYFE_APP_NAME,
 					)
 				);
 				$resp = json_decode(curl_exec($curl));
@@ -404,10 +417,11 @@ class WC_Easymerchant_Payments
 			$params = http_build_query(array('customer' => $im_cus_id));
 			curl_setopt($curl, CURLOPT_POST, false);
 			curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "GET");
-			curl_setopt($curl, CURLOPT_URL, $api_base_url . "api/v1/card?$params");
+			curl_setopt($curl, CURLOPT_URL, $api_base_url . "/api/v1/card?$params");
 			curl_setopt($curl, CURLOPT_HTTPHEADER, array(
 				'X-Api-Key: ' . $api_key,
-				'X-Api-Secret: ' . $secret_key
+				'X-Api-Secret: ' . $secret_key,
+				'User-Agent: ' . LYFE_APP_NAME,
 			));
 
 			$response = curl_exec($curl);

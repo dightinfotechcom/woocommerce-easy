@@ -100,7 +100,6 @@ class WC_Gateway_ACHmerchant_Addons extends WC_Gateway_ACH_Easymerchant
 			$img_customer = get_post_meta($order->id, '_customer_id', true);
 			$img_source = get_post_meta($order->id, '_card_id', true);
 		}
-		$url = 'http://stage-api.easymerchant-api.test/';
 		$charge_card = array(
 			'customer' => $img_customer,
 			'description' => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
@@ -115,12 +114,13 @@ class WC_Gateway_ACHmerchant_Addons extends WC_Gateway_ACH_Easymerchant
 		curl_setopt($curl, CURLOPT_AUTOREFERER, true);
 		curl_setopt($curl, CURLOPT_VERBOSE, false);
 		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($curl, CURLOPT_URL, $url . 'api/v1/ach/charge');
+		curl_setopt($curl, CURLOPT_URL, $this->api_base_url . '/api/v1/ach/charge');
 		curl_setopt($curl, CURLOPT_POST, 'true');
 		curl_setopt($curl, CURLOPT_POSTFIELDS, $charge_card);
 		curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-			'X-Api-Key: ' . $this->get_option('api_key'),
-			'X-Api-Secret: ' . $this->get_option('api_secret')
+			'X-Api-Key: ' . $this->api_key,
+			'X-Api-Secret: ' . $this->secret_key,
+			'User-Agent: ' . LYFE_APP_NAME,
 		));
 
 		$resp = json_decode(curl_exec($curl));
@@ -135,7 +135,7 @@ class WC_Gateway_ACHmerchant_Addons extends WC_Gateway_ACH_Easymerchant
 					$order->reduce_order_stock();
 				}
 
-				$order->update_status('on-hold', sprintf(__('InstantMerchant charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-gateway-instantmerchant'), $resp->charge_id));
+				$order->update_status('on-hold', sprintf(__('lyfePAY charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-gateway-instantmerchant'), $resp->charge_id));
 			} else {
 
 				$order->add_order_note($resp->message . ' Transaction ID ' . $resp->charge_id);

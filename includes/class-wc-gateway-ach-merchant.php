@@ -59,6 +59,8 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             'subscription_amount_changes',
             'subscription_date_changes',
             'subscription_payment_method_change',
+            'subscription_payment_method_change_customer',
+            'subscription_payment_method_change_admin',
             'multiple_subscriptions',
             'pre-orders',
             'add_payment_method',
@@ -69,14 +71,14 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
         $this->init_settings();
         $this->enabled = $this->get_option('enabled');
         $this->testmode = 'yes' === $this->get_option('test_mode');
-        if ($this->testmode == 'yes') {
+        if ($this->testmode == 'yes') { // Arvind please check if this is correct and make all testmode code same
             $this->api_key = $this->get_option('test_api_key');
             $this->secret_key = $this->get_option('test_secret_key');
-            $this->api_base_url = 'https://stage-api.stage-easymerchant.io/';
+            $this->api_base_url = 'https://stage-api.stage-easymerchant.io';
         } else {
             $this->api_key = $this->get_option('api_key');
             $this->secret_key = $this->get_option('api_secret');
-            $this->api_base_url = 'https://api.easymerchant.io/';
+            $this->api_base_url = 'https://api.easymerchant.io';
         }
         $this->capture = 'yes' === $this->get_option('capture', 'yes');
         $this->saved_cards = 'yes' === $this->get_option('saved_cards');
@@ -130,15 +132,15 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
                 'default'     => 'yes',
                 'desc_tip'    => true
             ),
-            'test_secret_key' => array(
-                'title'       => __('Test Secret Key', 'woocommerce-easymerchant'),
+            'test_api_key' => array(
+                'title'       => __('Test API Key', 'woocommerce-easymerchant'),
                 'type'        => 'text',
                 'description' => __('Get your API keys from your AchMerchant account.', 'woocommerce-easymerchant'),
                 'default'     => '',
                 'desc_tip'    => true,
             ),
-            'test_api_key' => array(
-                'title'       => __('Test API Key', 'woocommerce-easymerchant'),
+            'test_secret_key' => array(
+                'title'       => __('Test Secret Key', 'woocommerce-easymerchant'),
                 'type'        => 'text',
                 'description' => __('Get your API keys from your AchMerchant account.', 'woocommerce-easymerchant'),
                 'default'     => '',
@@ -199,11 +201,12 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             "zip"               => $order->shipping_postcode,
             "country"           => $order->billing_country,
         ]);
-        $response = wp_remote_post($this->api_base_url . 'api/v1/customers/', array(
+        $response = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
             'method'    => 'POST',
             'headers'   => array(
                 'X-Api-Key'      => $this->api_key,
                 'X-Api-Secret'   => $this->secret_key,
+                'User-Agent: ' . LYFE_APP_NAME,
                 'Content-Type'   => 'application/json',
             ),
             'body'               => $customer_details,
@@ -239,11 +242,12 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
                 'routing_number'    => $routing_number,
                 'account_type'      => $account_type,
             ]);
-            $achCharge = wp_remote_post($this->api_base_url . 'api/v1/ach/charge', array(
+            $achCharge = wp_remote_post($this->api_base_url . '/api/v1/ach/charge', array(
                 'method'    => 'POST',
                 'headers'   => array(
                     'X-Api-Key'      => $this->api_key,
                     'X-Api-Secret'   => $this->secret_key,
+                    'User-Agent: ' . LYFE_APP_NAME,
                     'Content-Type'   => 'application/json',
                 ),
                 'body'               => $body,
@@ -265,7 +269,9 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
-
+        if(!$amount || $amount < 1) {
+            return new WP_Error( 'simplify_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1' );
+        }
         $transaction_id = get_post_meta($order_id, '_transaction_id', true);
         // $curl = $this->get_curl();
         // $order_data = get_post_meta($order_id);
@@ -279,11 +285,12 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             $post['test_mode'] = true;
         }
 
-        $refundAmount = wp_remote_post($this->api_base_url . 'api/v1/refund/', array(
+        $refundAmount = wp_remote_post($this->api_base_url . '/api/v1/refunds/', array(
             'method'    => 'POST',
             'headers'   => array(
                 'X-Api-Key'      => $this->api_key,
                 'X-Api-Secret'   => $this->secret_key,
+                'User-Agent: ' . LYFE_APP_NAME,
                 'Content-Type'   => 'application/json',
             ),
             'body'               => $post,
@@ -295,7 +302,7 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
         if ($refund_data['status']) {
             $order = new WC_Order($order_id);
             // create the note
-            $order->add_order_note($refund_data['message'] . ' transaction_id ' . $refund_data['refund_id']);
+            $order->add_order_note('Refunded $' . $amount . ' - Refund ID: ' . $refund_data['refund_id'] . ' - Reason: ' . $reason);
             return true;
         } else {
             return new WP_Error('simplify_refund_error', $refund_data['refund_id']);

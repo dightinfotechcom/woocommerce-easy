@@ -90,7 +90,8 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($curl, CURLOPT_HTTPHEADER, array(
 			'X-Api-Key: ' . $this->api_key,
-			'X-Api-Secret: ' . $this->secret_key
+			'X-Api-Secret: ' . $this->secret_key,
+			'User-Agent: ' . LYFE_APP_NAME,
 		));
 		return $curl;
 	}

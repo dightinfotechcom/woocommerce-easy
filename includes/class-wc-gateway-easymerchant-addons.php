@@ -118,8 +118,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 
 	// 		// Check if $img_source is not empty before making the request
 	// 		if (!empty($img_source)) {
-	// 			$api_base_url = 'https://stage-api.stage-easymerchant.io/';
-	// 			$url = $api_base_url . "api/v1/card?card_id=$img_source";
+	// 			$url = $this->api_base_url . "/api/v1/card?card_id=$img_source";
 
 	// 			$curl = curl_init();
 	// 			$options = get_option('woocommerce_easymerchant_settings');
@@ -127,8 +126,9 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 	// 			curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "GET");
 	// 			curl_setopt($curl, CURLOPT_URL, $url);
 	// 			curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-	// 				'X-Api-Key: ' . $options['test_api_key'], // Replace with your actual API Key
-	// 				'X-Api-Secret: ' . $options['test_secret_key'] // Replace with your actual API Secret
+	// 				'X-Api-Key: ' . $this->api_key, // Replace with your actual API Key
+	// 				'X-Api-Secret: ' . $this->secret_key, // Replace with your actual API Secret
+	// 				'User-Agent: ' . LYFE_APP_NAME,
 	// 			));
 	// 			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 
@@ -171,7 +171,8 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 	// 	curl_setopt($curl, CURLOPT_POSTFIELDS, $charge_card);
 	// 	curl_setopt($curl, CURLOPT_HTTPHEADER, array(
 	// 		'X-Api-Key: ' . $options['test_api_key'], // Replace with your actual API Key
-	// 		'X-Api-Secret: ' . $options['test_secret_key'] // Replace with your actual API Secret
+	// 		'X-Api-Secret: ' . $options['test_secret_key'], // Replace with your actual API Secret
+	// 		'User-Agent: ' . LYFE_APP_NAME,
 	// 	));
 
 	// 	$resp = json_decode(curl_exec($curl));
@@ -208,16 +209,16 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 		if ($order) {
 			$img_source = get_post_meta($order->id, '_card_id', true);
 			if (!empty($img_source)) {
-				$api_base_url = 'https://stage-api.stage-easymerchant.io/';
-				$url = $api_base_url . "api/v1/card?card_id=$img_source";
+				$url = $this->api_base_url . "/api/v1/card?card_id=$img_source";
 
 				$curl = curl_init();
 				$options = get_option('woocommerce_easymerchant_settings');
 				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "GET");
 				curl_setopt($curl, CURLOPT_URL, $url);
 				curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-					'X-Api-Key: ' . $options['test_api_key'],
-					'X-Api-Secret: ' . $options['test_secret_key']
+					'X-Api-Key: ' . $this->api_key,
+					'X-Api-Secret: ' . $this->secret_key,
+					'User-Agent: ' . LYFE_APP_NAME,
 				));
 				curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 
@@ -261,7 +262,8 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 		curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($charge_card));
 		curl_setopt($curl, CURLOPT_HTTPHEADER, array(
 			'X-Api-Key: ' . $options['test_api_key'],
-			'X-Api-Secret: ' . $options['test_secret_key']
+			'X-Api-Secret: ' . $options['test_secret_key'],
+			'User-Agent: ' . LYFE_APP_NAME,
 		));
 
 		$response = curl_exec($curl);

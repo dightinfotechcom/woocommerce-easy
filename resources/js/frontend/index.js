@@ -333,7 +333,7 @@ const Content = (props) => {
 	// const cartMeta = store.getCartMeta();
 
 	const createCustomer = async (customerPayload) => {
-		try {
+		try { // Arvind need to add tesmode / live mode check and update the URL accordingly			
 			const response = await axios.post(
 				"https://stage-api.stage-easymerchant.io/api/v1/customers",
 				customerPayload,
