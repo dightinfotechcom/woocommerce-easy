@@ -3,7 +3,7 @@
 use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;
 
 /**
- * Dummy Payments Blocks integration
+ * lyfePAY Payments Blocks integration
  *
  * @since 1.0.3
  */
@@ -13,7 +13,7 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 	/**
 	 * The gateway instance.
 	 *
-	 * @var WC_Gateway_Dummy
+	 * @var WC_Gateway_lyfePAY
 	 */
 	private $gateway;
 
@@ -29,7 +29,7 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 	 */
 	public function initialize()
 	{
-		$this->settings = get_option('woocommerce_dummy_settings', []);
+		// $this->settings = get_option('woocommerce_dummy_settings', []);
 		$gateways       = WC()->payment_gateways->payment_gateways();
 		$this->gateway  = $gateways[$this->name];
 	}
@@ -52,17 +52,17 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 	public function get_payment_method_script_handles()
 	{
 		$script_path       = '/assets/js/frontend/blocks.js';
-		$script_asset_path = WC_Easymerchant_Payments::plugin_abspath() . 'assets/js/frontend/blocks.asset.php';
+		$script_asset_path = WC_lyfePAY_Payments::plugin_abspath() . 'assets/js/frontend/blocks.asset.php';
 		$script_asset      = file_exists($script_asset_path)
 			? require($script_asset_path)
 			: array(
 				'dependencies' => array(),
 				'version'      => '1.2.0'
 			);
-		$script_url        = WC_Easymerchant_Payments::plugin_url() . $script_path;
+		$script_url        = WC_lyfePAY_Payments::plugin_url() . $script_path;
 
 		wp_register_script(
-			'wc-dummy-payments-blocks',
+			'wc-lyfePAY-payments-blocks',
 			$script_url,
 			$script_asset['dependencies'],
 			$script_asset['version'],
@@ -70,10 +70,10 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 		);
 
 		if (function_exists('wp_set_script_translations')) {
-			wp_set_script_translations('wc-dummy-payments-blocks', 'woocommerce-gateway-dummy', WC_Easymerchant_Payments::plugin_abspath() . 'languages/');
+			wp_set_script_translations('wc-lyfePAY-payments-blocks', 'woocommerce-gateway-lyfePAY', WC_lyfePAY_Payments::plugin_abspath() . 'languages/');
 		}
 
-		return ['wc-dummy-payments-blocks'];
+		return ['wc-lyfePAY-payments-blocks'];
 	}
 
 	public function get_curl($url = '')

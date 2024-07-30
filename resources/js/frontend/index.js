@@ -6,17 +6,28 @@ import { decodeEntities } from "@wordpress/html-entities";
 import { getSetting } from "@woocommerce/settings";
 import { useState, useEffect } from "@wordpress/element";
 import axios from "axios";
-
-const settings = getSetting("easymerchant_data", {});
+import { select } from "@wordpress/data";
+const settings = getSetting("lyfepay_data", {});
 const settings2 = getSetting("ach_data", {});
 
-const defaultLabel = __("Easymerchant", "woo-gutenberg-products-block");
-const defaultLabel2 = __("ACH Easymerchant", "woo-gutenberg-products-block");
+const defaultLabel = __("lyfePAY", "woo-gutenberg-products-block");
+const defaultLabel2 = __("ACH lyfePAY", "woo-gutenberg-products-block");
 
 const label = decodeEntities(settings.title) || defaultLabel;
 const label2 = decodeEntities(settings.title) || defaultLabel2;
 const { CART_STORE_KEY } = window.wc.wcBlocksData;
+// const { CHECKOUT_STORE_KEY } = window.wc.wcBlocksData;
+// const { PAYMENT_STORE_KEY } = window.wc.wcBlocksData;
+// const store = select(PAYMENT_STORE_KEY);
+// const customerId = store.getCustomerId();
+const store = select(CART_STORE_KEY);
+const cartData = store.getCartData();
 
+const cartTotals = store.getCartTotals();
+const cartMeta = store.getCartMeta();
+// const paymentMethodData = store.getPaymentMethodData();
+// const shouldSavePaymentMethod = store.getShouldSavePaymentMethod();
+// console.log(customerData);
 const PaymentFields = () => {
 	const [cards, setCards] = useState([]);
 	const [useSavedCard, setUseSavedCard] = useState(false);
@@ -326,14 +337,10 @@ const Content = (props) => {
 		"X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
 		"Content-Type": "application/json",
 	};
-	// const store = select(CART_STORE_KEY);
-	// const cartData = store.getCartData();
-	// const customerData = store.getCustomerData();
-	// const cartTotals = store.getCartTotals();
-	// const cartMeta = store.getCartMeta();
 
 	const createCustomer = async (customerPayload) => {
-		try { // Arvind need to add tesmode / live mode check and update the URL accordingly			
+		try {
+			// Arvind need to add tesmode / live mode check and update the URL accordingly
 			const response = await axios.post(
 				"https://stage-api.stage-easymerchant.io/api/v1/customers",
 				customerPayload,
@@ -375,45 +382,19 @@ const Content = (props) => {
 		}
 	};
 
-	const getCustomerData = async () => {
-		try {
-			const consumerKey = "ck_8695bd7466cbf252a872cd7b5fd69abc739f1d53";
-			const consumerSecret = "cs_bbfc9e9f63f6f44a966a716568d7d43a4801be79";
-
-			// Encode the keys for Basic Auth
-			const authHeader = `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}`;
-			console.log(authHeader);
-			const api = axios.create({
-				baseURL: "https://localhost/wooeasy/wp-json/wc/v3/customers",
-				headers: {
-					Authorization: authHeader,
-					"Content-Type": "application/json",
-				},
-			});
-			console.log(api);
-
-			// const response = await api.get(
-			// 	"https://localhost/wooeasy/wp-json/wc/v3/customers"
-			// );
-			// return response.data;
-			// console.log(response.data);
-		} catch (error) {
-			console.error("Error fetching customer data:", error);
-			return null;
-		}
-	};
 	useEffect(() => {
 		const unsubscribe = onPaymentSetup(async () => {
-			const customerData = await getCustomerData();
+			const customerData = store.getCustomerData();
+			const billingAddress = customerData.billingAddress;
 			const customerPayload = {
-				username: customerData.email,
-				email: customerData.email,
-				name: customerData.name,
-				address: customerData.address_1,
-				city: customerData.city,
-				state: customerData.state,
-				zip: customerData.postcode,
-				country: customerData.country,
+				username: billingAddress.email,
+				email: billingAddress.email,
+				name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+				address: billingAddress.address_1,
+				city: billingAddress.city,
+				state: billingAddress.state,
+				zip: billingAddress.postcode,
+				country: billingAddress.country,
 			};
 			try {
 				const customerId = await createCustomer(customerPayload);
@@ -447,6 +428,7 @@ const Content = (props) => {
 		emitResponse.responseTypes.SUCCESS,
 		onPaymentSetup,
 	]);
+
 	return <PaymentFields />;
 };
 const Content2 = (props) => {

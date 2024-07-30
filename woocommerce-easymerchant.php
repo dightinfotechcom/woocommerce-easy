@@ -1,12 +1,12 @@
 <?php
 
 /**
- * Plugin Name: WooCommerce Easymerchant
+ * Plugin Name: lyfePAY
  * Plugin URI: https://easymerchant.io/
- * Description: Adds the Easymerchant gateway to your WooCommerce website.
+ * Description: Adds the lyfePAY gateway to your WooCommerce website.
  * Version: 3.0.2
  *
- * Author: Easymerchant
+ * Author: lyfePAY
  * Author URI: https://easymerchant.io/
  *
  * Text Domain: woocommerce-easymerchant
@@ -38,7 +38,7 @@ function img_dependency_error_woo()
 ?>
 	<div class="notice notice-error is-dismissible">
 		<p>
-			<?php _e('Easy Merchant requires Woocommerce plugin installed and activated!', 'woocommerce-easymerchant'); ?>
+			<?php _e('lyfePAY requires Woocommerce plugin installed and activated!', 'woocommerce-easymerchant'); ?>
 		</p>
 	</div>
 <?php
@@ -53,7 +53,7 @@ function img_dependency_error_curl()
 ?>
 	<div class="notice notice-error is-dismissible">
 		<p>
-			<?php _e('Easy Merchant requires PHP CURL installed on this server!', 'woocommerce-easymerchant'); ?>
+			<?php _e('lyfePAY requires PHP CURL installed on this server!', 'woocommerce-easymerchant'); ?>
 		</p>
 	</div>
 <?php
@@ -66,11 +66,11 @@ function do_ssl_check()
 	}
 }
 /**
- * WC Easymerchant gateway plugin class.
+ * WC lyfePAY gateway plugin class.
  *
- * @class WC_Easymerchant_Payments
+ * @class WC_lyfePAY_Payments
  */
-class WC_Easymerchant_Payments
+class WC_lyfePAY_Payments
 {
 
 	/**
@@ -144,11 +144,11 @@ class WC_Easymerchant_Payments
 	 */
 	protected function __construct()
 	{
-
+		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'img_woocommerce_addon_settings_link'));
 		add_action('admin_notices', array($this, 'admin_notices'), 15);
-		add_action('plugins_loaded', array($this, 'init_easy_merchant'));
+		add_action('plugins_loaded', array($this, 'init_lyfePAY'));
 		add_action('rest_api_init', function () {
-			register_rest_route('easymerchant/v1', '/cards', array(
+			register_rest_route('lyfePAY/v1', '/cards', array(
 				'methods' => 'GET',
 				'callback' => 'fetch_user_cards',
 			));
@@ -166,7 +166,7 @@ class WC_Easymerchant_Payments
 	}
 
 
-	public function init_easy_merchant()
+	public function init_lyfePAY()
 	{
 		/**
 		 * Check if WooCommerce is active
@@ -187,7 +187,7 @@ class WC_Easymerchant_Payments
 
 		add_action('woocommerce_order_status_on-hold_to_processing', array($this, 'capture_payment'));
 		add_action('woocommerce_order_status_on-hold_to_completed', array($this, 'capture_payment'));
-		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'img_woocommerce_addon_settings_link'));
+		// add_filter('plugin_action_links_lyfePAY', array($this, 'img_woocommerce_addon_settings_link'));
 	}
 	/**
 	 * Allow this class and other classes to add slug keyed notices (to avoid duplication)
@@ -234,9 +234,9 @@ class WC_Easymerchant_Payments
 	 */
 	public static function init()
 	{
-		//Easymerchant gateway class.
+		//lyfePAY gateway class.
 		add_action('plugins_loaded', array(__CLASS__, 'includes'), 0);
-		// Make theEasymerchant gateway available to WC.
+		// Make the lyfePAY gateway available to WC.
 		add_filter('woocommerce_payment_gateways', array(__CLASS__, 'add_gateway'));
 		// Registers WooCommerce Blocks integration.
 		add_action('woocommerce_blocks_loaded', array(__CLASS__, 'woocommerce_gateway_easymerchant_woocommerce_block_support'));
@@ -258,7 +258,7 @@ class WC_Easymerchant_Payments
 		}
 
 		if (('yes' === $hide_for_non_admin_users && current_user_can('manage_options')) || 'no' === $hide_for_non_admin_users) {
-			$gateways[] = 'WC_Gateway_Dummy';
+			$gateways[] = 'WC_Gateway_lyfePAY';
 			$gateways[] = 'WC_Gateway_ACH_Easymerchant';
 		}
 		return $gateways;
@@ -273,7 +273,7 @@ class WC_Easymerchant_Payments
 			$methods[] = 'WC_Gateway_Easymerchant_Addons';
 			$methods[] = 'WC_Gateway_ACHmerchant_Addons';
 		} else {
-			$methods[] = 'WC_Gateway_Dummy';
+			$methods[] = 'WC_Gateway_lyfePAY';
 			$methods[] = 'WC_Gateway_ACH_Easymerchant';
 		}
 		return $methods;
@@ -298,7 +298,7 @@ class WC_Easymerchant_Payments
 	{
 		$order = wc_get_order($order_id);
 
-		if ('easymerchant' === $order->payment_method) {
+		if ('lyfePAY' === $order->payment_method) {
 			$charge = get_post_meta($order_id, '_transaction_id', true);
 			if ($charge) {
 				$curl = $this->get_curl2();
@@ -338,14 +338,14 @@ class WC_Easymerchant_Payments
 	}
 
 	/*Plugin Settings Link*/
-	public function img_woocommerce_addon_settings_link($actions)
-	{
-		$settinglinks = array(
-			'<a href="' . admin_url('admin.php?page=wc-settings&tab=checkout&section=easymerchant') . '">Settings</a>',
-		);
-		$actions = array_merge($actions, $settinglinks);
-		return $actions;
-	}
+	// public function img_woocommerce_addon_settings_link($actions)
+	// {
+	// 	$settinglinks = array(
+	// 		'<a href="' . admin_url('admin.php?page=wc-settings&tab=checkout&section=easymerchant') . '">Settings</a>',
+	// 	);
+	// 	$actions = array_merge($actions, $settinglinks);
+	// 	return $actions;
+	// }
 	/**
 	 * Plugin includes.
 	 */
@@ -458,6 +458,14 @@ class WC_Easymerchant_Payments
 			);
 		}
 	}
+
+	public function img_woocommerce_addon_settings_link($links)
+	{
+		$settings_url = add_query_arg('page', 'wc-settings', 'admin.php') . '&tab=checkout&section=easymerchant';
+		$settings_link = '<a href="' . esc_url($settings_url) . '">' . __('Settings', 'woocommerce-easymerchant') . '</a>';
+		array_unshift($links, $settings_link);
+		return $links;
+	}
 }
 
-WC_Easymerchant_Payments::init();
+WC_lyfePAY_Payments::init();

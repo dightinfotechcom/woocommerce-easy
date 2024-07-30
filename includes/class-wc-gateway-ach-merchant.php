@@ -47,9 +47,9 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
     {
         $this->id = 'ach-easymerchant';
         $this->has_fields = true;
-        $this->method_title = 'ACH EasyMerchant';
-        $this->title = 'ACH EasyMerchant';
-        $this->method_description = 'ACH EasyMerchant Gateway Options';
+        $this->method_title = 'ACH lyfePAY';
+        $this->title = 'ACH lyfePAY';
+        $this->method_description = 'ACH lyfePAY Gateway Options';
         $this->supports = array(
             'subscriptions',
             'products',
@@ -269,8 +269,8 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
-        if(!$amount || $amount < 1) {
-            return new WP_Error( 'simplify_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1' );
+        if (!$amount || $amount < 1) {
+            return new WP_Error('simplify_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1');
         }
         $transaction_id = get_post_meta($order_id, '_transaction_id', true);
         // $curl = $this->get_curl();

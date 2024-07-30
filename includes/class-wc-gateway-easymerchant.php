@@ -1,10 +1,10 @@
 <?php
 
 /**
- * WC_Gateway_Easymerchant class
+ * WC_Gateway_WC_Gateway_lyfePAY class
  *
- * @author   Easymerchant <info@easymerchant.io>
- * @package  WooCommerce Easymerchant Gateway
+ * @author   WC_Gateway_lyfePAY <info@WC_Gateway_lyfePAY.io>
+ * @package  WooCommerce WC_Gateway_lyfePAY Gateway
  * @since    1.0.0
  */
 
@@ -14,12 +14,12 @@ if (!defined('ABSPATH')) {
 }
 session_start();
 /**
- * Easymerchant Gateway.
+ * WC_Gateway_lyfePAY Gateway.
  *
- * @class    WC_Gateway_Easymerchant
+ * @class    WC_Gateway_WC_Gateway_lyfePAY
  * @version  1.0.7
  */
-class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it properly, we do not want name it dummy class
+class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 {
 
 	/**
@@ -49,10 +49,10 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 	public function __construct()
 	{
 		$this->id 				  = 'easymerchant';
-		$this->icon               = apply_filters('woocommerce_easymerchant_gateway_icon', '');
+		$this->icon               = apply_filters('woocommerce_lyfePAY_gateway_icon', '');
 		$this->logo 			  = $this->get_option('logo_display');
 		$this->has_fields         = true;
-		$this->title 			  = 'Easy Merchant';
+		$this->title 			  = 'lyfePAY';
 		$this->supports           = array(
 			'subscriptions',
 			'products',
@@ -63,7 +63,7 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 			'subscription_date_changes',
 			'subscription_payment_method_change',
 			'subscription_payment_method_change_customer',
-            'subscription_payment_method_change_admin',
+			'subscription_payment_method_change_admin',
 			'multiple_subscriptions',
 			'pre-orders',
 			'add_payment_method',
@@ -73,8 +73,8 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 		);
 		$token = new WC_Payment_Token_CC();
 		$token->set_gateway_id($this->id);
-		$this->method_title       = _x('Easymerchant', 'Easymerchant payment method', 'woocommerce-easymerchant');
-		$this->method_description = __('Easymerchant Gateway Options.', 'woocommerce-easymerchant');
+		$this->method_title       = _x('lyfePAY ', 'lyfePAY  payment method', 'woocommerce-easymerchant');
+		$this->method_description = __('lyfePAY  Gateway Options.', 'woocommerce-easymerchant');
 
 		// Load the settings.
 		$this->init_form_fields();
@@ -134,7 +134,7 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 	 */
 	public function add_cc_card_holder_name($cc_fields, $payment_id)
 	{
-		if ($payment_id === 'easymerchant')
+		if ($payment_id === 'lyfePAY')
 			return $cc_fields;
 		$cc_card_holder_field = '<p class="form-row form-row-wide">
                  <label for="' . esc_attr($payment_id) . '-card-holder-name">' . __('Card Holder Name', 'woocommerce') . ' <span class="required">*</span></label>
@@ -544,9 +544,9 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 	 */
 	public function process_refund($order_id, $amount = null, $reason = '')
 	{
-		if(!$amount || $amount < 1) {
-            return new WP_Error( 'simplify_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1' );
-        }
+		if (!$amount || $amount < 1) {
+			return new WP_Error('lyfePAY_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1');
+		}
 
 		$transaction_id = get_post_meta($order_id, '_transaction_id', true);
 		// $curl = $this->get_curl();
@@ -581,7 +581,7 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 			$order->add_order_note('Refunded $' . $amount . ' - Refund ID: ' . $refund_data['refund_id'] . ' - Reason: ' . $reason);
 			return true;
 		} else {
-			return new WP_Error('simplify_refund_error', $refund_data['refund_id']);
+			return new WP_Error('lyfePAY_refund_error', $refund_data['refund_id']);
 		}
 
 		return false;
@@ -603,13 +603,13 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 			'logo_display' => array(
 				'title'       => __('Brand Logo', 'woocommerce'),
 				'type'        => 'image',
-				'description' =>  '<img src="' . esc_url(site_url('/wp-content/uploads/OIP.jpg')) . '" alt="Custom Logo" style="max-width: 40px; height: auto;"/>',
+				'description' =>  '<img src="' . plugin_dir_url(__FILE__) . 'assets/images/lyfecycle-payments-logo.png" alt="Logo" style="max-width: 30%; height: auto; filter: brightness(0.5);"/>',
 			),
 			'title' => array(
 				'title'       => __('Title', 'woocommerce'),
 				'type'        => 'text',
 				'description' => __('This controls the title which the user sees during checkout.', 'woocommerce'),
-				'default'     => __('Credit card', 'woocommerce'),
+				'default'     => __('lyfePAY', 'woocommerce'),
 				'desc_tip'    => true
 			),
 			'description' => array(
@@ -621,14 +621,14 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 			),
 			'api_key' => array(
 				'title' => __('API Key', 'woocommerce'),
-				'description' => __('Get your API key from EasyMerchant.', 'woocommerce'),
+				'description' => __('Get your API key from lyfePAY.', 'woocommerce'),
 				'type' => 'text',
 				'default' => '',
 				'desc_tip' => true,
 			),
 			'api_secret' => array(
 				'title' => __('API Secret', 'woocommerce'),
-				'description' => __('Get your API secret from EasyMerchant.', 'woocommerce'),
+				'description' => __('Get your API secret from lyfePAY.', 'woocommerce'),
 				'type' => 'text',
 				'default' => '',
 				'desc_tip' => true,
@@ -643,14 +643,14 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 			'test_api_key' => array(
 				'title'       => __('Test API Key', 'woocommerce'),
 				'type'        => 'text',
-				'description' => __('Get your API keys from your EasyMerchant account.', 'woocommerce'),
+				'description' => __('Get your API keys from your lyfePAY account.', 'woocommerce'),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
 			'test_secret_key' => array(
 				'title'       => __('Test Secret Key', 'woocommerce'),
 				'type'        => 'text',
-				'description' => __('Get your API keys from your EasyMerchant account.', 'woocommerce'),
+				'description' => __('Get your API keys from your lyfePAY account.', 'woocommerce'),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
@@ -681,9 +681,9 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 	 */
 	public function get_icon()
 	{
-		$icon  = '<img src="' . WC_HTTPS::force_https_url(WC()->plugin_url() . '/assets/images/icons/credit-cards/visa.png') . '" alt="Visa" />';
-		$icon .= '<img src="' . WC_HTTPS::force_https_url(WC()->plugin_url() . '/assets/images/icons/credit-cards/mastercard.png') . '" alt="MasterCard" />';
-		$icon .= '<img src="' . WC_HTTPS::force_https_url(WC()->plugin_url() . '/assets/images/icons/credit-cards/amex.png') . '" alt="Amex" />';
+		$icon  = '<img src="' . plugin_dir_url(__FILE__) . '/assets/images/icons/visa.png" alt="Visa" />';
+		$icon .= '<img src="' . plugin_dir_url(__FILE__) . '/assets/images/icons/mastercard.png" alt="MasterCard" />';
+		$icon .= '<img src="' . plugin_dir_url(__FILE__) . '/assets/images/icons/amex.png" alt="Amex" />';
 		return apply_filters('woocommerce_gateway_icon', $icon, $this->id);
 	}
 
@@ -705,7 +705,7 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 		$card_id = get_post_meta($order_id, '_card_id', true);
 
 		if (!$im_cus_id || !$card_id) {
-			$order->update_status('failed', __('Easymerchant Subscription Payment Failed: Missing customer or card details', 'woocommerce-easymerchant'));
+			$order->update_status('failed', __('lyfePAY Subscription Payment Failed: Missing customer or card details', 'woocommerce-easymerchant'));
 			return;
 		}
 
@@ -734,9 +734,9 @@ class WC_Gateway_Dummy extends WC_Payment_Gateway // Arvind need to rename it pr
 
 		if (isset($response_data['status']) && $response_data['status'] === 'success') {
 			$order->payment_complete($response_data['transaction_id']);
-			$order->add_order_note(sprintf(__('Easymerchant Subscription Payment Successful (Transaction ID: %s)', 'woocommerce-easymerchant'), $response_data['transaction_id']));
+			$order->add_order_note(sprintf(__('lyfePAY Subscription Payment Successful (Transaction ID: %s)', 'woocommerce-easymerchant'), $response_data['transaction_id']));
 		} else {
-			$order->update_status('failed', sprintf(__('Easymerchant Subscription Payment Failed: %s', 'woocommerce-easymerchant'), $response_data['message']));
+			$order->update_status('failed', sprintf(__('lyfePAY Subscription Payment Failed: %s', 'woocommerce-easymerchant'), $response_data['message']));
 		}
 	}
 }
