@@ -603,7 +603,7 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 			'logo_display' => array(
 				'title'       => __('Brand Logo', 'woocommerce'),
 				'type'        => 'image',
-				'description' =>  '<img src="' . plugin_dir_url(__FILE__) . 'assets/images/lyfecycle-payments-logo.png" alt="Logo" style="max-width: 30%; height: auto; filter: brightness(0.5);"/>',
+				'description' =>  '<img src="' . plugin_dir_url(__FILE__) . 'assets/images/lyfecycle-payments-logo.png" alt="Logo" style="max-width: 30%; height: auto; "/>',
 			),
 			'title' => array(
 				'title'       => __('Title', 'woocommerce'),
@@ -616,7 +616,7 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 				'title'       => __('Description', 'woocommerce'),
 				'type'        => 'text',
 				'description' => __('This controls the description which the user sees during checkout.', 'woocommerce'),
-				'default'     => 'Pay with your credit card via Easy Merchant.',
+				'default'     => 'Pay with your credit card via lyfePAY.',
 				'desc_tip'    => true
 			),
 			'api_key' => array(
@@ -666,7 +666,7 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 				'title'       => __('Saved Cards', 'woocommerce'),
 				'label'       => __('Enable Payment via Saved Cards', 'woocommerce'),
 				'type'        => 'checkbox',
-				'description' => __('If enabled, users will be able to pay with a saved card during checkout. Card details are saved on Easy Merchant servers, not on your store.', 'woocommerce'),
+				'description' => __('If enabled, users will be able to pay with a saved card during checkout. Card details are saved on lyfePAY servers, not on your store.', 'woocommerce'),
 				'default'     => 'no',
 				'desc_tip'    => true,
 			),

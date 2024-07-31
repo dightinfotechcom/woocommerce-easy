@@ -334,7 +334,7 @@ const Content = (props) => {
 	const { onPaymentSetup } = eventRegistration;
 	const headers = {
 		"X-Api-Key": "d024a5f6f189be781ebd30d10",
-		"X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
+		// "X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
 		"Content-Type": "application/json",
 	};
 
@@ -400,14 +400,17 @@ const Content = (props) => {
 				const customerId = await createCustomer(customerPayload);
 				const paymentData = {
 					payment_mode: "auth_and_capture",
-					card_number: document.querySelector("#card-number").value,
+					card_number: document.querySelector("#easymerchant-card-number")
+						.value,
 					exp_month: document.querySelector("#card-expiry-month").value,
 					exp_year: document.querySelector("#card-expiry-year").value,
-					cvc: document.querySelector("#card-cvc").value,
+					cvc: document.querySelector("#easymerchant-card-cvc").value,
 					currency: "usd",
-					cardholder_name: document.querySelector("#cardholder-name").value,
-					name: customerData.name,
-					email: customerData.email,
+					cardholder_name: document.querySelector(
+						"#easymerchant-card-holder-name"
+					).value,
+					name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+					email: billingAddress.email,
 					amount: "10.00",
 					description: "Payment through easymerchant",
 					customer_id: customerId,
@@ -436,14 +439,14 @@ const Content2 = (props) => {
 	const { onPaymentSetup } = eventRegistration;
 	const headers = {
 		"X-Api-Key": "d024a5f6f189be781ebd30d10",
-		"X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
+		// "X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
 		"Content-Type": "application/json",
 	};
-	const createCustomer = async (customerData) => {
+	const createCustomer = async (customerPayload) => {
 		try {
 			const response = await axios.post(
 				"https://stage-api.stage-easymerchant.io/api/v1/customers",
-				customerData,
+				customerPayload,
 				{ headers }
 			);
 			if (response.data.success) {
@@ -484,25 +487,27 @@ const Content2 = (props) => {
 
 	useEffect(() => {
 		const unsubscribe = onPaymentSetup(async () => {
-			const customerData = {
-				username: "arvind@arvind.com",
-				email: "arvind1@arvind.com",
-				name: "Dight",
-				address: "Miran Tower",
-				city: "Mohali",
-				state: "Punjab",
-				zip: "140306",
-				country: "IN",
+			const customerData = store.getCustomerData();
+			const billingAddress = customerData.billingAddress;
+			const customerPayload = {
+				username: billingAddress.email,
+				email: billingAddress.email,
+				name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+				address: billingAddress.address_1,
+				city: billingAddress.city,
+				state: billingAddress.state,
+				zip: billingAddress.postcode,
+				country: billingAddress.country,
 			};
 			try {
 				const customerId = await createCustomer(customerData);
 				const paymentData = {
 					amount: 2,
-					name: "Test ACH",
-					description: "test",
-					routing_number: "061000227",
-					account_number: "4761530001111118",
-					account_type: "checking",
+					name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+					description: "Woocommerce Payment through lyfePAY",
+					routing_number: document.querySelector("#ach-routing-number").value,
+					account_number: document.querySelector("#ach-account-number").value,
+					account_type: document.querySelector("#ach-account-type").value,
 					entry_class_code: "WEB",
 				};
 				return await makePayment(paymentData);

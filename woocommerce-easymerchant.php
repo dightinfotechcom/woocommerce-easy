@@ -337,15 +337,6 @@ class WC_lyfePAY_Payments
 		}
 	}
 
-	/*Plugin Settings Link*/
-	// public function img_woocommerce_addon_settings_link($actions)
-	// {
-	// 	$settinglinks = array(
-	// 		'<a href="' . admin_url('admin.php?page=wc-settings&tab=checkout&section=easymerchant') . '">Settings</a>',
-	// 	);
-	// 	$actions = array_merge($actions, $settinglinks);
-	// 	return $actions;
-	// }
 	/**
 	 * Plugin includes.
 	 */
@@ -447,7 +438,7 @@ class WC_lyfePAY_Payments
 	public static function woocommerce_gateway_easymerchant_woocommerce_block_support()
 	{
 		if (class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType')) {
-			require_once 'includes/blocks/class-wc-dummy-payments-blocks.php';
+			require_once 'includes/blocks/class-wc-lyfepay-payments-blocks.php';
 			require_once 'includes/blocks/class-wc-ach-easymerchant-payments-blocks.php';
 			add_action(
 				'woocommerce_blocks_payment_method_type_registration',

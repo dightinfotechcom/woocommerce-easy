@@ -6,9 +6,9 @@ if (!defined('ABSPATH')) {
 /**
  * WC_Gateway_Easymerchant_Addons class.
  *
- * @extends WC_Easy_Merchant
+ * @extends WC_Gateway_lyfePAY
  */
-class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
+class WC_Gateway_Easymerchant_Addons extends WC_Gateway_lyfePAY
 {
 
 	/**
@@ -203,7 +203,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 	{
 		global $woocommerce;
 		if ($amount * 100 < 50) {
-			return new WP_Error('easymerchant_error', __('Sorry, the minimum allowed order total is 0.50 to use this payment method.', 'woocommerce-gateway-easymerchant'));
+			return new WP_Error('easymerchant_error', __('Sorry, the minimum allowed order total is 0.50 to use this payment method.', 'woocommerce-easymerchant'));
 		}
 
 		if ($order) {
@@ -283,7 +283,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 			update_post_meta($order->id, '_transaction_id', $resp->charge_id, true);
 
 			if (!$this->capture) {
-				$order->update_status('on-hold', sprintf(__('EasyMerchant charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-easymerchant'), $resp->charge_id));
+				$order->update_status('on-hold', sprintf(__('lyfePAY charge authorized (Charge ID: %s). Process order to take payment, or cancel to remove the pre-authorization.', 'woocommerce-easymerchant'), $resp->charge_id));
 			} else {
 				$order->add_order_note($resp->message . ' Transaction ID ' . $resp->charge_id);
 				$order->payment_complete();
@@ -308,7 +308,7 @@ class WC_Gateway_Easymerchant_Addons extends WC_Gateway_Dummy
 	{
 		$response = $this->process_subscription_payment($amount_to_charge, $renewal_order);
 		if (is_wp_error($response)) {
-			$renewal_order->update_status('failed', sprintf(__('easymerchant Transaction Failed (%s)', 'woocommerce-easymerchant'), $response->get_error_message()));
+			$renewal_order->update_status('failed', sprintf(__('lyfePAY Transaction Failed (%s)', 'woocommerce-easymerchant'), $response->get_error_message()));
 		}
 	}
 }
