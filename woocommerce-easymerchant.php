@@ -144,6 +144,7 @@ class WC_lyfePAY_Payments
 	 */
 	protected function __construct()
 	{
+		add_action('wp_enqueue_scripts', array($this, 'enqueue_my_custom_script'));
 		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'img_woocommerce_addon_settings_link'));
 		add_action('admin_notices', array($this, 'admin_notices'), 15);
 		add_action('plugins_loaded', array($this, 'init_lyfePAY'));
@@ -164,7 +165,27 @@ class WC_lyfePAY_Payments
 			));
 		});
 	}
+	public function enqueue_my_custom_script()
+	{
+		// Enqueue your script
+		wp_enqueue_script(
+			'my-custom-script',
+			plugin_dir_url(__FILE__) . '/resources/js/frontend/index.js',
+			array('jquery'),
+			'1.0.0',
+			true
+		);
 
+		// Localize the script with the AJAX URL
+		wp_localize_script(
+			'my-custom-script',
+			'myAjax',
+			array(
+				'ajax_url' => admin_url('admin-ajax.php'),
+				'nonce'   => wp_create_nonce('my_nonce_action')
+			)
+		);
+	}
 
 	public function init_lyfePAY()
 	{
@@ -278,6 +299,9 @@ class WC_lyfePAY_Payments
 		}
 		return $methods;
 	}
+
+
+
 	public function get_curl2()
 	{
 		$curl = curl_init();

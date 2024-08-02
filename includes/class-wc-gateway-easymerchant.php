@@ -97,6 +97,8 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 		add_filter('woocommerce_credit_card_form_fields', array($this, 'add_cc_card_holder_name'), 10, 2);
 		add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 		add_action('woocommerce_scheduled_subscription_payment_dummy', array($this, 'process_subscription_payment'), 10, 2);
+		add_action('wp_ajax_get_client_token', 'get_client_token');
+		add_action('wp_ajax_nopriv_get_client_token', 'get_client_token');
 	}
 
 	/**
@@ -174,349 +176,54 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 	 *
 	 * @return array|void
 	 */
-	// public function process_payment($order_id, $retry = true, $force_customer = false)
-	// {
+	public function process_payment($order_id, $retry = true, $force_customer = false)
+	{
 
-	// 	global $woocommerce;
-	// 	session_start();
-	// 	$order = wc_get_order($order_id);
-	// 	$user_id = get_current_user_id();
-	// 	$im_cus_id = get_user_meta($user_id, '_customer_id', true);
+		global $woocommerce;
+		$order = wc_get_order($order_id);
+		$amount_details = json_encode([
+			"amount"           => $order->order_total,
+		]);
+		$response = wp_remote_post($this->api_base_url . '/api/v1/paymentintent/', array(
+			'method'    => 'POST',
+			'headers'   => array(
+				'X-Api-Key'      => $this->api_key,
+				'X-Api-Secret'   => $this->secret_key,
+				'Content-Type'   => 'application/json',
+			),
+			'body'               => $amount_details,
+		));
+		$response_body = wp_remote_retrieve_body($response);
+		$response_data = json_decode($response_body, true);
 
-	// 	// Generate a random number between 1000 and 9999
-	// 	$randomNumber = rand(1000, 9999);
-	// 	// Concatenate the strings and the random number
-	// 	$username = $order->shipping_first_name . $order->shipping_last_name . $randomNumber;
-	// 	$customer_details = json_encode([
-	// 		"username" 			=> strtolower($username),
-	// 		"email" 			=> $order->billing_email,
-	// 		"name" 				=> $order->shipping_first_name . ' ' . $order->shipping_last_name,
-	// 		"address" 			=> $order->shipping_address_1,
-	// 		"city" 				=> $order->shipping_city,
-	// 		"state" 			=> $order->shipping_state,
-	// 		"zip" 				=> $order->shipping_postcode,
-	// 		"country" 			=> $order->billing_country,
-	// 	]);
-
-	// 	$response = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
-	// 		'method'    => 'POST',
-	// 		'headers'   => array(
-	// 			'X-Api-Key'      => $this->api_key,
-	// 			'X-Api-Secret'   => $this->secret_key,
-	// 			'Content-Type'   => 'application/json',
-	// 			'User-Agent: ' . LYFE_APP_NAME,
-	// 		),
-	// 		'body'               => $customer_details,
-	// 	));
-	// 	$response_body = wp_remote_retrieve_body($response);
-	// 	$response_data = json_decode($response_body, true);
+		if ($response_data && $response_data['status'] == 1) {
+			// Return response data
+			return $response_data;
+		} else {
+			// Handle error
+			return [
+				'status' => 0,
+				'message' => 'Payment intent creation failed.'
+			];
+		}
+	}
 
 
-	// 	$getCard = $_SESSION['cardDetails'];
-	// 	$card_number 	 = str_replace(' ', '', $getCard['easymerchant-card-number'] ?? '');
-	// 	$expiry 		 = $getCard['easymerchant-card-expiry'] ?? '';
-	// 	$cvc 			 = $getCard['easymerchant-card-cvc'] ?? '';
-	// 	$cardholder_name = $getCard['easymerchant-card-holder-name'] ?? '';
 
-	// 	// Extract expiry month and year
-	// 	list($exp_month, $exp_year) = explode(' / ', $expiry);
+	public function get_client_token()
+	{
+		check_ajax_referer('my_nonce_action', 'security');
 
+		global $woocommerce, $post;
+		$orderId = $post->ID;
+		$order = wc_get_order($orderId);
+		$order_id = $order->get_id();
+		$gateway = new WC_Gateway_lyfePAY();
+		$response_data = $gateway->process_payment($order_id);
 
-	// 	$card_details 	= json_encode([
-	// 		'card_number' 			=> $card_number,
-	// 		'cardholder_name'		=> $cardholder_name,
-	// 		'exp_month'				=> $exp_month,
-	// 		'exp_year' 				=> $exp_year,
-	// 		'cvc'					=> $cvc,
-	// 		'customer' 			    => $response_data['customer_id'],
-	// 	]);
-
-	// 	$cardSaved = wp_remote_post($this->api_base_url . '/api/v1/cards/', array(
-	// 		'method'    => 'POST',
-	// 		'headers'   => array(
-	// 			'X-Api-Key'      => $this->api_key,
-	// 			'X-Api-Secret'   => $this->secret_key,
-	// 			'Content-Type'   => 'application/json',
-	// 			'User-Agent: ' . LYFE_APP_NAME,
-	// 		),
-	// 		'body'               => $card_details,
-	// 	));
-	// 	$card_body = wp_remote_retrieve_body($cardSaved);
-	// 	$card_data = json_decode($card_body, true);
-	// 	//existing customer and save new card
-	// 	if ((($this->saved_cards == 'yes' && isset($_POST['wc-easymerchant-new-payment-method'])) || $force_customer) && $response_data['customer_id']) {
-	// 		$getCard = wp_remote_post($this->api_base_url . '/api/v1/cards/' . $response_data['customer_id'] . '/cards/', array(
-	// 			'method'    => 'GET',
-	// 			'headers'   => array(
-	// 				'X-Api-Key'      => $this->api_key,
-	// 				'X-Api-Secret'   => $this->secret_key,
-	// 				'Content-Type'   => 'application/json',
-	// 				'User-Agent: ' . LYFE_APP_NAME,
-	// 			),
-	// 		));
-	// 		$card_list = wp_remote_retrieve_body($getCard);
-	// 		$list_data = json_decode($card_list, true);
-	// 	}
-
-	// 	if ($order->get_total() > 0) {
-	// 		$body = json_encode([
-	// 			'payment_mode'      => 'auth_and_capture',
-	// 			'amount'            => $order->order_total,
-	// 			'name'              => $order->shipping_first_name . ' ' . $order->shipping_last_name,
-	// 			'email'             => $order->billing_email,
-	// 			'description'       => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
-	// 			'currency'		    => strtolower(get_woocommerce_currency()),
-	// 			'card_number' 		=> $card_number,
-	// 			'cardholder_name'	=> $cardholder_name,
-	// 			'exp_month'			=> $exp_month,
-	// 			'exp_year' 			=> $exp_year,
-	// 			'cvc'				=> $cvc,
-	// 		]);
-	// 		$charge = wp_remote_post($this->api_base_url . '/api/v1/charges', array(
-	// 			'method'    		=> 'POST',
-	// 			'headers'   		=> array(
-	// 				'X-Api-Key'     => $this->api_key,
-	// 				'X-Api-Secret'  => $this->secret_key,
-	// 				'Content-Type'  => 'application/json',
-	// 				'User-Agent: ' . LYFE_APP_NAME,
-	// 			),
-	// 			'body'				=> $body,
-	// 		));
-	// 		$createCharge 	= wp_remote_retrieve_body($charge);
-	// 		$chargeResponse = json_decode($createCharge, true);
-	// 	} else {
-	// 		//existing customer and existing card
-	// 		if ($_POST['ccard_id'] != '' && $im_cus_id) {
-	// 			$customer_id = $im_cus_id;
-	// 			$card_id = $_POST['ccard_id'];
-	// 			$source = (object) array(
-	// 				'customer' => $customer_id,
-	// 				'source'   => $card_id
-	// 			);
-	// 			// Store source to order meta.
-	// 			$this->save_source($order, $source);
-	// 		} else if ($im_cus_id) {
-	// 			//existing customer and save new card
-	// 			$body = json_encode([
-	// 				'card_number' 		=> $card_number,
-	// 				'cardholder_name'	=> $cardholder_name,
-	// 				'exp_month'			=> $exp_month,
-	// 				'exp_year' 			=> $exp_year,
-	// 				'cvc'				=> $cvc,
-	// 				'customer'			=> $response_data['customer_id'],
-	// 			]);
-	// 			$post['customer'] = $im_cus_id;
-	// 			$card = wp_remote_post($this->api_base_url . '/api/v1/card', array(
-	// 				'method'    => 'POST',
-	// 				'headers'   => array(
-	// 					'X-Api-Key'     => $this->api_key,
-	// 					'X-Api-Secret'  => $this->secret_key,
-	// 					'Content-Type'  => 'application/json',
-	// 					'User-Agent: ' . LYFE_APP_NAME,
-	// 				),
-	// 				'body'				=> $body,
-	// 			));
-	// 			$createCard = wp_remote_retrieve_body($card);
-	// 			$cardResponse = json_decode($createCard, true);
-
-	// 			if ($cardResponse && $cardResponse->status) {
-	// 				$source = (object) array(
-	// 					'customer' => $post['customer'],
-	// 					'source'   => $cardResponse->card_id
-	// 				);
-	// 				// Store source to order meta.
-	// 				$this->save_source($order, $source);
-	// 			} else {
-	// 				wc_add_notice(__('Payment error:', 'woocommerce-easymerchant') . ' ' . $cardResponse->message, 'error');
-	// 				return false;
-	// 			}
-	// 		} else {
-	// 			//new customer save customer and save card
-	// 			$customer = wp_remote_post($this->api_base_url . '/api/v1/customer', array(
-	// 				'method'    => 'POST',
-	// 				'headers'   => array(
-	// 					'X-Api-Key'     => $this->api_key,
-	// 					'X-Api-Secret'  => $this->secret_key,
-	// 					'Content-Type'  => 'application/json',
-	// 					'User-Agent: ' . LYFE_APP_NAME,
-	// 				),
-	// 				'body'				=> $customer_details,
-	// 			));
-	// 			$createCustomer = wp_remote_retrieve_body($customer);
-	// 			$customerResponse = json_decode($createCustomer, true);
-
-	// 			if ($customerResponse && $customerResponse->status) {
-	// 				$customer_id = $customerResponse->customer_id;
-	// 				$card_details['customer'] = $customer_id;
-
-	// 				$cards = wp_remote_post($this->api_base_url . '/api/v1/card', array(
-	// 					'method'    => 'POST',
-	// 					'headers'   => array(
-	// 						'X-Api-Key'     => $this->api_key,
-	// 						'X-Api-Secret'  => $this->secret_key,
-	// 						'Content-Type'  => 'application/json',
-	// 						'User-Agent: ' . LYFE_APP_NAME,
-	// 					),
-	// 					'body'				=> $card_details,
-	// 				));
-	// 				$createCards = wp_remote_retrieve_body($cards);
-	// 				$cardsResponse = json_decode($createCards, true);
-
-	// 				if ($cardsResponse && $cardsResponse->status) {
-	// 					$source = (object) array(
-	// 						'customer' => $customer_id,
-	// 						'source'   => $cardsResponse->card_id
-	// 					);
-	// 					// Store source to order meta.
-	// 					$this->save_source($order, $source);
-	// 				} else {
-	// 					wc_add_notice(__('Payment error:', 'woocommerce-easymerchant') . ' ' . $cardsResponse->message, 'error');
-	// 					return false;
-	// 				}
-	// 			} else {
-	// 				wc_add_notice(__('Payment error:', 'woocommerce-easymerchant') . ' ' . $customerResponse->message, 'error');
-	// 				return false;
-	// 			}
-	// 		}
-	// 		$order = new WC_Order($order_id);
-	// 		$order->payment_complete();
-	// 		$woocommerce->cart->empty_cart();
-	// 	}
-	// 	return array(
-	// 		'result' => 'success',
-	// 		'redirect' => $this->get_return_url($order)
-	// 	);
-	// }
-
-	/**
-
-	 * Process the payment
-
-	 *
-
-	 * @param int  $order_id Reference.
-
-	 * @param bool $retry Should we retry on fail.
-
-	 * @param bool $force_customer Force user creation.
-
-	 *
-
-	 * @return array|void
-
-	 */
-
-	// public function process_payment($order_id, $retry = true, $force_customer = false)
-	// {
-	// 	global $woocommerce;
-
-	// 	$order = wc_get_order($order_id);
-
-	// 	// Concatenate the strings and the random number
-	// 	$username = $order->billing_email;
-	// 	$customer_details = json_encode([
-	// 		"username" 			=> $username,
-	// 		"email" 			=> $order->billing_email,
-	// 		"name" 				=> $order->shipping_first_name . ' ' . $order->shipping_last_name,
-	// 		"address" 			=> $order->shipping_address_1,
-	// 		"city" 				=> $order->shipping_city,
-	// 		"state" 			=> $order->shipping_state,
-	// 		"zip" 				=> $order->shipping_postcode,
-	// 		"country" 			=> $order->billing_country,
-	// 	]);
-
-	// 	$response = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
-	// 		'method'    => 'POST',
-	// 		'headers'   => array(
-	// 			'X-Api-Key'      => $this->api_key,
-	// 			'X-Api-Secret'   => $this->secret_key,
-	// 			'Content-Type'   => 'application/json',
-	// 			'User-Agent: ' . LYFE_APP_NAME,
-	// 		),
-	// 		'body'               => $customer_details,
-	// 	));
-
-
-	// 	$response_body = wp_remote_retrieve_body($response);
-	// 	$response_data = json_decode($response_body, true);
-	// 	$token_id = wc_clean($_POST['wc-easymerchant-payment-token']);
-	// 	$token    = WC_Payment_Tokens::get_customer_tokens(get_current_user_id(), 'easymerchant');
-	// 	print_r($token);
-
-
-	// 	die();
-	// 	// if (isset($_POST['save_payment_method'])) {
-	// 	$cardNumber 	= $_POST['easymerchant-card-number'];
-	// 	$expiry 		= $_POST['easymerchant-card-expiry'];
-	// 	list($exp_month, $exp_year) = explode(' / ', $expiry);
-	// 	$cardCvv 		= $_POST['easymerchant-card-cvc'];
-	// 	$cardholderName = $_POST['easymerchant-card-holder-name'];
-	// 	// $card_details 	= json_encode([
-	// 	// 	'card_number' 		=> $cardNumber,
-	// 	// 	'cardholder_name'	=> $cardholderName,
-	// 	// 	'exp_month'			=> $exp_month,
-	// 	// 	'exp_year' 			=> $exp_year,
-	// 	// 	'cvc'				=> $cardCvv,
-	// 	// 	'customer' 			=> $response_data['customer_id'],
-	// 	// ]);
-	// 	// $cardSaved = wp_remote_post($this->api_base_url . '/api/v1/cards/', array(
-	// 	// 	'method'    => 'POST',
-	// 	// 	'headers'   => array(
-	// 	// 		'X-Api-Key'      => $this->api_key,
-	// 	// 		'X-Api-Secret'   => $this->secret_key,
-	// 	// 		'Content-Type'   => 'application/json',
-	// 	'User-Agent: ' . LYFE_APP_NAME,
-	// 	// 	),
-	// 	// 	'body'               => $card_details,
-	// 	// ));
-
-	// 	// $card_body = wp_remote_retrieve_body($cardSaved);
-	// 	// $card_data = json_decode($card_body, true);
-	// 	// }
-	// 	// if ($order->get_total() > 0) {
-
-	// 	$body = json_encode([
-	// 		'payment_mode'      => 'auth_and_capture',
-	// 		'amount'            => $order->order_total,
-	// 		'name'              => $order->shipping_first_name . ' ' . $order->shipping_last_name,
-	// 		'email'             => $order->billing_email,
-	// 		'description'       => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
-	// 		'currency'		    => strtolower(get_woocommerce_currency()),
-	// 		'card_number' 		=> $cardNumber,
-	// 		'cardholder_name'	=> $cardholderName,
-	// 		'exp_month'			=> $exp_month,
-	// 		'exp_year' 			=> $exp_year,
-	// 		'cvc'				=> $cardCvv,
-	// 	]);
-
-	// 	$charge = wp_remote_post($this->api_base_url . '/api/v1/charges', array(
-	// 		'method'    		=> 'POST',
-	// 		'headers'   		=> array(
-	// 			'X-Api-Key'     => $this->api_key,
-	// 			'X-Api-Secret'  => $this->secret_key,
-	// 			'Content-Type'  => 'application/json',
-	// 			'User-Agent: ' . LYFE_APP_NAME,
-	// 		),
-	// 		'body'				=> $body,
-	// 	));
-
-	// 	$createCharge 	= wp_remote_retrieve_body($charge);
-	// 	$chargeResponse = json_decode($createCharge, true);
-
-	// 	if ($chargeResponse['status'] === 'true') {
-	// 		$order = wc_get_order($order_id);
-	// 		$order->save();
-	// 		$woocommerce->cart->empty_cart();
-
-	// 		return array(
-	// 			'result' => 'success',
-	// 			'redirect' => $this->get_return_url($order)
-	// 		);
-	// 	}
-	// 	// }
-	// }
-
-
+		// Return the response as JSON
+		wp_send_json($response_data);
+	}
 
 
 	/**

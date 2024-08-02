@@ -16,18 +16,8 @@ const defaultLabel2 = __("ACH lyfePAY", "woo-gutenberg-products-block");
 const label = decodeEntities(settings.title) || defaultLabel;
 const label2 = decodeEntities(settings.title) || defaultLabel2;
 const { CART_STORE_KEY } = window.wc.wcBlocksData;
-// const { CHECKOUT_STORE_KEY } = window.wc.wcBlocksData;
-// const { PAYMENT_STORE_KEY } = window.wc.wcBlocksData;
-// const store = select(PAYMENT_STORE_KEY);
-// const customerId = store.getCustomerId();
 const store = select(CART_STORE_KEY);
-const cartData = store.getCartData();
 
-const cartTotals = store.getCartTotals();
-const cartMeta = store.getCartMeta();
-// const paymentMethodData = store.getPaymentMethodData();
-// const shouldSavePaymentMethod = store.getShouldSavePaymentMethod();
-// console.log(customerData);
 const PaymentFields = () => {
 	const [cards, setCards] = useState([]);
 	const [useSavedCard, setUseSavedCard] = useState(false);
@@ -326,44 +316,79 @@ const PaymentFields2 = () => {
 	);
 };
 
-/**
- * Content component
- */
 const Content = (props) => {
 	const { eventRegistration, emitResponse } = props;
 	const { onPaymentSetup } = eventRegistration;
-	const headers = {
-		"X-Api-Key": "d024a5f6f189be781ebd30d10",
-		// "X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
-		"Content-Type": "application/json",
-	};
+	const [clientToken, setClientToken] = useState("");
+
+	useEffect(() => {
+		// Function to get client token from the server
+		const getClientToken = async () => {
+			try {
+				const { CHECKOUT_STORE_KEY } = window.wc.wcBlocksData;
+				const store = select(CHECKOUT_STORE_KEY);
+				const orderId = store.getOrderId();
+				const response = await axios.post(
+					"http://localhost/wooeasy/wp-admin/admin-ajax.php",
+					{
+						action: "get_client_token",
+						order_id: orderId,
+					}
+				);
+
+				if (response.data && response.data.client_token) {
+					setClientToken(response.data.client_token);
+				} else {
+					console.error("Failed to get client token:", response.data.message);
+				}
+			} catch (error) {
+				console.error("Error fetching client token:", error);
+			}
+		};
+
+		getClientToken();
+	}, []);
 
 	const createCustomer = async (customerPayload) => {
 		try {
-			// Arvind need to add tesmode / live mode check and update the URL accordingly
+			console.log(clientToken);
+			const headers = {
+				"Client-Token": clientToken,
+				"Content-Type": "application/json",
+			};
+			console.log(headers);
 			const response = await axios.post(
 				"https://stage-api.stage-easymerchant.io/api/v1/customers",
 				customerPayload,
-				{ headers }
+				headers
 			);
+
 			if (response.data.success) {
 				return response.data.customerId;
 			} else {
 				throw new Error(response.data.message);
 			}
 		} catch (error) {
+			console.error("Error creating customer:", error);
 			throw new Error(
 				error.message || "There was an error creating the customer"
 			);
 		}
 	};
+
 	const makePayment = async (paymentData) => {
 		try {
+			const headers = {
+				"Client-Token": clientToken,
+				"Content-Type": "application/json",
+			};
+			console.log(headers);
 			const response = await axios.post(
 				"https://stage-api.stage-easymerchant.io/api/v1/charge",
 				paymentData,
-				{ headers }
+				headers
 			);
+
 			if (response.data.success) {
 				return {
 					type: emitResponse.responseTypes.SUCCESS,
@@ -375,6 +400,7 @@ const Content = (props) => {
 				throw new Error(response.data.message);
 			}
 		} catch (error) {
+			console.error("Error processing payment:", error);
 			return {
 				type: emitResponse.responseTypes.ERROR,
 				message: error.message || "There was an error processing your payment",
@@ -383,49 +409,60 @@ const Content = (props) => {
 	};
 
 	useEffect(() => {
-		const unsubscribe = onPaymentSetup(async () => {
-			const customerData = store.getCustomerData();
-			const billingAddress = customerData.billingAddress;
-			const customerPayload = {
-				username: billingAddress.email,
-				email: billingAddress.email,
-				name: `${billingAddress.first_name} ${billingAddress.last_name}`,
-				address: billingAddress.address_1,
-				city: billingAddress.city,
-				state: billingAddress.state,
-				zip: billingAddress.postcode,
-				country: billingAddress.country,
-			};
-			try {
-				const customerId = await createCustomer(customerPayload);
-				const paymentData = {
-					payment_mode: "auth_and_capture",
-					card_number: document.querySelector("#easymerchant-card-number")
-						.value,
-					exp_month: document.querySelector("#card-expiry-month").value,
-					exp_year: document.querySelector("#card-expiry-year").value,
-					cvc: document.querySelector("#easymerchant-card-cvc").value,
-					currency: "usd",
-					cardholder_name: document.querySelector(
-						"#easymerchant-card-holder-name"
-					).value,
-					name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+		if (typeof onPaymentSetup === "function") {
+			const unsubscribe = onPaymentSetup(async () => {
+				const customerData = store.getCustomerData();
+				const cartTotals = store.getCartTotals();
+				const billingAddress = customerData.billingAddress;
+
+				const customerPayload = {
+					username: billingAddress.email,
 					email: billingAddress.email,
-					amount: "10.00",
-					description: "Payment through easymerchant",
-					customer_id: customerId,
+					name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+					address: billingAddress.address_1,
+					city: billingAddress.city,
+					state: billingAddress.state,
+					zip: billingAddress.postcode,
+					country: billingAddress.country,
 				};
-				return await makePayment(paymentData);
-			} catch (error) {
-				return {
-					type: emitResponse.responseTypes.ERROR,
-					message: error.message,
+
+				const amountPayload = {
+					amount: (cartTotals.total_price / 100).toFixed(2),
 				};
-			}
-		});
-		return () => {
-			unsubscribe();
-		};
+
+				try {
+					const customerId = await createCustomer(customerPayload);
+					const paymentData = {
+						payment_mode: "auth_and_capture",
+						card_number: document.querySelector("#easymerchant-card-number")
+							.value,
+						exp_month: document.querySelector("#card-expiry-month").value,
+						exp_year: document.querySelector("#card-expiry-year").value,
+						cvc: document.querySelector("#easymerchant-card-cvc").value,
+						currency: "usd",
+						cardholder_name: document.querySelector(
+							"#easymerchant-card-holder-name"
+						).value,
+						name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+						email: billingAddress.email,
+						amount: amountPayload.amount,
+						description: "Payment through easymerchant",
+						customer_id: customerId,
+					};
+					return await makePayment(paymentData);
+				} catch (error) {
+					return {
+						type: emitResponse.responseTypes.ERROR,
+						message: error.message,
+					};
+				}
+			});
+			return () => {
+				unsubscribe();
+			};
+		} else {
+			console.error("onPaymentSetup is not a function");
+		}
 	}, [
 		emitResponse.responseTypes.ERROR,
 		emitResponse.responseTypes.SUCCESS,
@@ -434,98 +471,98 @@ const Content = (props) => {
 
 	return <PaymentFields />;
 };
+
 const Content2 = (props) => {
 	const { eventRegistration, emitResponse } = props;
 	const { onPaymentSetup } = eventRegistration;
 	const headers = {
-		"X-Api-Key": "d024a5f6f189be781ebd30d10",
-		// "X-Api-Secret": "d38a4eb39d46e3cf32f3d3217",
+		client_token: "",
 		"Content-Type": "application/json",
 	};
-	const createCustomer = async (customerPayload) => {
-		try {
-			const response = await axios.post(
-				"https://stage-api.stage-easymerchant.io/api/v1/customers",
-				customerPayload,
-				{ headers }
-			);
-			if (response.data.success) {
-				return response.data.customerId;
-			} else {
-				throw new Error(response.data.message);
-			}
-		} catch (error) {
-			throw new Error(
-				error.message || "There was an error creating the customer"
-			);
-		}
-	};
-	const makePayment = async (paymentData) => {
-		try {
-			const response = await axios.post(
-				"https://stage-api.stage-easymerchant.io/api/v1/charge",
-				paymentData,
-				{ headers }
-			);
-			if (response.data.success) {
-				return {
-					type: emitResponse.responseTypes.SUCCESS,
-					meta: {
-						paymentMethodData: response.data.paymentMethodData,
-					},
-				};
-			} else {
-				throw new Error(response.data.message);
-			}
-		} catch (error) {
-			return {
-				type: emitResponse.responseTypes.ERROR,
-				message: error.message || "There was an error processing your payment",
-			};
-		}
-	};
+	// const createCustomer = async (customerPayload) => {
+	// 	try {
+	// 		const response = await axios.post(
+	// 			"https://stage-api.stage-easymerchant.io/api/v1/customers",
+	// 			customerPayload,
+	// 			{ headers }
+	// 		);
+	// 		if (response.data.success) {
+	// 			return response.data.customerId;
+	// 		} else {
+	// 			throw new Error(response.data.message);
+	// 		}
+	// 	} catch (error) {
+	// 		throw new Error(
+	// 			error.message || "There was an error creating the customer"
+	// 		);
+	// 	}
+	// };
+	// const makePayment = async (paymentData) => {
+	// 	try {
+	// 		const response = await axios.post(
+	// 			"https://stage-api.stage-easymerchant.io/api/v1/charge",
+	// 			paymentData,
+	// 			{ headers }
+	// 		);
+	// 		if (response.data.success) {
+	// 			return {
+	// 				type: emitResponse.responseTypes.SUCCESS,
+	// 				meta: {
+	// 					paymentMethodData: response.data.paymentMethodData,
+	// 				},
+	// 			};
+	// 		} else {
+	// 			throw new Error(response.data.message);
+	// 		}
+	// 	} catch (error) {
+	// 		return {
+	// 			type: emitResponse.responseTypes.ERROR,
+	// 			message: error.message || "There was an error processing your payment",
+	// 		};
+	// 	}
+	// };
 
-	useEffect(() => {
-		const unsubscribe = onPaymentSetup(async () => {
-			const customerData = store.getCustomerData();
-			const billingAddress = customerData.billingAddress;
-			const customerPayload = {
-				username: billingAddress.email,
-				email: billingAddress.email,
-				name: `${billingAddress.first_name} ${billingAddress.last_name}`,
-				address: billingAddress.address_1,
-				city: billingAddress.city,
-				state: billingAddress.state,
-				zip: billingAddress.postcode,
-				country: billingAddress.country,
-			};
-			try {
-				const customerId = await createCustomer(customerData);
-				const paymentData = {
-					amount: 2,
-					name: `${billingAddress.first_name} ${billingAddress.last_name}`,
-					description: "Woocommerce Payment through lyfePAY",
-					routing_number: document.querySelector("#ach-routing-number").value,
-					account_number: document.querySelector("#ach-account-number").value,
-					account_type: document.querySelector("#ach-account-type").value,
-					entry_class_code: "WEB",
-				};
-				return await makePayment(paymentData);
-			} catch (error) {
-				return {
-					type: emitResponse.responseTypes.ERROR,
-					message: error.message,
-				};
-			}
-		});
-		return () => {
-			unsubscribe();
-		};
-	}, [
-		emitResponse.responseTypes.ERROR,
-		emitResponse.responseTypes.SUCCESS,
-		onPaymentSetup,
-	]);
+	// useEffect(() => {
+	// 	const unsubscribe = onPaymentSetup(async () => {
+	// 		const customerData = store.getCustomerData();
+	// 		const billingAddress = customerData.billingAddress;
+	// 		const customerPayload = {
+	// 			username: billingAddress.email,
+	// 			email: billingAddress.email,
+	// 			name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+	// 			address: billingAddress.address_1,
+	// 			city: billingAddress.city,
+	// 			state: billingAddress.state,
+	// 			zip: billingAddress.postcode,
+	// 			country: billingAddress.country,
+	// 		};
+	// 		try {
+	// 			const customerId = await createCustomer(customerData);
+	// 			const paymentData = {
+	// 				amount: 2,
+	// 				name: `${billingAddress.first_name} ${billingAddress.last_name}`,
+	// 				description: "Woocommerce Payment through lyfePAY",
+	// 				routing_number: document.querySelector("#ach-routing-number").value,
+	// 				account_number: document.querySelector("#ach-account-number").value,
+	// 				account_type: document.querySelector("#ach-account-type").value,
+	// 				entry_class_code: "WEB",
+	// 			};
+	// 			return await makePayment(paymentData);
+	// 		} catch (error) {
+	// 			return {
+	// 				type: emitResponse.responseTypes.ERROR,
+	// 				message: error.message,
+	// 			};
+	// 		}
+	// 	});
+	// 	return () => {
+	// 		unsubscribe();
+	// 	};
+	// }, [
+	// 	emitResponse.responseTypes.ERROR,
+	// 	emitResponse.responseTypes.SUCCESS,
+	// 	onPaymentSetup,
+	// ]);
 
 	return <PaymentFields2 />;
 };
