@@ -3,8 +3,8 @@
 /**
  * WC_Gateway_ACH_Easymerchant class
  *
- * @author   Easymerchant <info@easymerchant.io>
- * @package  WooCommerce ACH Easymerchant Gateway
+ * @author   lyfePAY ACH <info@easymerchant.io>
+ * @package  WooCommerce lyfePAY ACH Gateway
  * @since    1.0.0
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Easymerchant Gateway.
+ * lyfePAY ACH.
  *
  * @class    WC_Gateway_ACH_Easymerchant
  * @version  1.0.7
@@ -47,9 +47,7 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
     {
         $this->id = 'ach-easymerchant';
         $this->has_fields = true;
-        $this->method_title = 'ACH lyfePAY';
-        $this->title = 'ACH lyfePAY';
-        $this->method_description = 'ACH lyfePAY Gateway Options';
+        $this->title = 'lyfePAY ACH';
         $this->supports = array(
             'subscriptions',
             'products',
@@ -67,6 +65,8 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             'refunds',
             'default_credit_card_form'
         );
+        $this->method_title = _x('lyfePAY ACH', 'lyfePAY ACH  Payment Method', 'woocommerce-easymerchant');
+        $this->method_description = __('lyfePAY ACH Gateway Options', 'woocommerce-easymerchant');
         $this->init_form_fields();
         $this->init_settings();
         $this->enabled = $this->get_option('enabled');
@@ -81,7 +81,6 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             $this->api_base_url = 'https://api.easymerchant.io';
         }
         $this->capture = 'yes' === $this->get_option('capture', 'yes');
-        $this->saved_cards = 'yes' === $this->get_option('saved_cards');
 
         add_filter('woocommerce_account_form_fields', array($this, 'add_cc_account_holder_name'), 10, 2);
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
@@ -101,14 +100,14 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
                 'title'       => __('Title', 'woocommerce-easymerchant'),
                 'type'        => 'text',
                 'description' => __('This controls the title which the user sees during checkout.', 'woocommerce-easymerchant'),
-                'default'     => __('Bank Payment', 'woocommerce-easymerchant'),
+                'default'     => __('lyfePAY ACH', 'woocommerce-easymerchant'),
                 'desc_tip'    => true
             ),
             'description' => array(
                 'title'       => __('Description', 'woocommerce-easymerchant'),
                 'type'        => 'text',
                 'description' => __('This controls the description which the user sees during checkout.', 'woocommerce-easymerchant'),
-                'default'     => 'Pay your bill via ACH lyfePAY.',
+                'default'     => 'Pay your bill via lyfePAY ACH.',
                 'desc_tip'    => true
             ),
             'api_key' => array(

@@ -13,7 +13,7 @@ final class WC_Gateway_ACH_Easymerchant_Blocks_Support extends AbstractPaymentMe
 	/**
 	 * The gateway instance.
 	 *
-	 * @var WC_Gateway_Dummy
+	 * @var WC_Gateway_LyfePAY
 	 */
 	private $gateway;
 

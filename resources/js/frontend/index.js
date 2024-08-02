@@ -11,13 +11,17 @@ const settings = getSetting("lyfepay_data", {});
 const settings2 = getSetting("ach_data", {});
 
 const defaultLabel = __("lyfePAY", "woo-gutenberg-products-block");
-const defaultLabel2 = __("ACH lyfePAY", "woo-gutenberg-products-block");
+const defaultLabel2 = __("lyfePAY ACH", "woo-gutenberg-products-block");
 
 const label = decodeEntities(settings.title) || defaultLabel;
-const label2 = decodeEntities(settings.title) || defaultLabel2;
+const label2 = decodeEntities(settings2.title) || defaultLabel2;
 const { CART_STORE_KEY } = window.wc.wcBlocksData;
 const store = select(CART_STORE_KEY);
-
+// Import the localized script data
+const myTheme = window.myTheme;
+const ajaxurl = myTheme.ajaxurl;
+// Use the ajaxurl variable
+console.log(ajaxurl);
 const PaymentFields = () => {
 	const [cards, setCards] = useState([]);
 	const [useSavedCard, setUseSavedCard] = useState(false);
@@ -321,37 +325,15 @@ const Content = (props) => {
 	const { onPaymentSetup } = eventRegistration;
 	const [clientToken, setClientToken] = useState("");
 
-	useEffect(() => {
-		// Function to get client token from the server
-		const getClientToken = async () => {
-			try {
-				const { CHECKOUT_STORE_KEY } = window.wc.wcBlocksData;
-				const store = select(CHECKOUT_STORE_KEY);
-				const orderId = store.getOrderId();
-				const response = await axios.post(
-					"http://localhost/wooeasy/wp-admin/admin-ajax.php",
-					{
-						action: "get_client_token",
-						order_id: orderId,
-					}
-				);
+	// useEffect(() => {
+	// 	// Function to get client token from the server
+	// 	if (typeof onPaymentSetup === "function") {
 
-				if (response.data && response.data.client_token) {
-					setClientToken(response.data.client_token);
-				} else {
-					console.error("Failed to get client token:", response.data.message);
-				}
-			} catch (error) {
-				console.error("Error fetching client token:", error);
-			}
-		};
-
-		getClientToken();
-	}, []);
+	// 	}
+	// }, []);
 
 	const createCustomer = async (customerPayload) => {
 		try {
-			console.log(clientToken);
 			const headers = {
 				"Client-Token": clientToken,
 				"Content-Type": "application/json",
@@ -410,6 +392,28 @@ const Content = (props) => {
 
 	useEffect(() => {
 		if (typeof onPaymentSetup === "function") {
+			const getClientToken = async () => {
+				try {
+					const { CHECKOUT_STORE_KEY } = window.wc.wcBlocksData;
+					const store = select(CHECKOUT_STORE_KEY);
+					const orderId = store.getOrderId();
+					const response = await axios.post(
+						"/wooeasy/wp-admin/admin-ajax.php",
+						{
+							action: "get_client_token",
+							order_id: orderId,
+						}
+					);
+
+					if (response.data && response.data.client_token) {
+						setClientToken(response.data.client_token);
+					} else {
+						console.error("Failed to get client token:", response.data.message);
+					}
+				} catch (error) {
+					console.error("Error fetching client token:", error);
+				}
+			};
 			const unsubscribe = onPaymentSetup(async () => {
 				const customerData = store.getCustomerData();
 				const cartTotals = store.getCartTotals();
@@ -458,6 +462,7 @@ const Content = (props) => {
 				}
 			});
 			return () => {
+				getClientToken();
 				unsubscribe();
 			};
 		} else {
@@ -573,11 +578,51 @@ const Content2 = (props) => {
  */
 const Label = (props) => {
 	const { PaymentMethodLabel } = props.components;
-	return <PaymentMethodLabel text={label} />;
+	const imageStyle = {
+		filter: "drop-shadow(2px 4px 6px black)",
+	};
+	const divStyle = {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "space-between",
+		width: "100%",
+	};
+	return (
+		<div style={divStyle}>
+			<PaymentMethodLabel text={label} />
+			<div className="label-with-image">
+				<img
+					src="/wooeasy/wp-content/plugins/woocommerce-easymerchant/includes/assets/images/lyfecycle-payments-logo.png"
+					alt="Label Image"
+					style={imageStyle}
+				/>
+			</div>
+		</div>
+	);
 };
 const Label2 = (props) => {
 	const { PaymentMethodLabel } = props.components;
-	return <PaymentMethodLabel text={label2} />;
+	const imageStyle = {
+		filter: "drop-shadow(2px 4px 6px black)",
+	};
+	const divStyle = {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "space-between",
+		width: "100%",
+	};
+	return (
+		<div style={divStyle}>
+			<PaymentMethodLabel text={label2} />
+			<div className="label-with-image">
+				<img
+					src="/wooeasy/wp-content/plugins/woocommerce-easymerchant/includes/assets/images/lyfecycle-payments-logo.png"
+					alt="Label Image"
+					style={imageStyle}
+				/>
+			</div>
+		</div>
+	);
 };
 
 /**

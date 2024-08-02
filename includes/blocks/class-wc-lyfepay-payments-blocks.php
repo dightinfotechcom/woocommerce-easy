@@ -68,9 +68,17 @@ final class WC_Gateway_Easymerchant_Blocks_Support extends AbstractPaymentMethod
 			$script_asset['version'],
 			true
 		);
+		wp_localize_script(
+			'wc-lyfePAY-payments-blocks',
+			'myAjax',
+			array(
+				'ajax_url' => admin_url('admin-ajax.php'),
+				'nonce'   => wp_create_nonce('my_nonce_action')
+			)
+		);
 
 		if (function_exists('wp_set_script_translations')) {
-			wp_set_script_translations('wc-lyfePAY-payments-blocks', 'woocommerce-gateway-lyfePAY', WC_lyfePAY_Payments::plugin_abspath() . 'languages/');
+			wp_set_script_translations('wc-lyfePAY-payments-blocks', 'woocommerce-lyfePAY', WC_lyfePAY_Payments::plugin_abspath() . 'languages/');
 		}
 
 		return ['wc-lyfePAY-payments-blocks'];

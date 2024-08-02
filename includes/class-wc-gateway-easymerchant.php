@@ -49,7 +49,7 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 	public function __construct()
 	{
 		$this->id 				  = 'easymerchant';
-		$this->icon               = apply_filters('woocommerce_lyfePAY_gateway_icon', '');
+		$this->icon               =  apply_filters('woocommerce_lyfepay_icon', plugin_dir_path('/assets/images/lyfecycle-payments-logo.png', __FILE__));
 		$this->logo 			  = $this->get_option('logo_display');
 		$this->has_fields         = true;
 		$this->title 			  = 'lyfePAY';
@@ -67,12 +67,9 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 			'multiple_subscriptions',
 			'pre-orders',
 			'add_payment_method',
-			'tokenization',
 			'refunds',
 			'default_credit_card_form'
 		);
-		$token = new WC_Payment_Token_CC();
-		$token->set_gateway_id($this->id);
 		$this->method_title       = _x('lyfePAY ', 'lyfePAY  payment method', 'woocommerce-easymerchant');
 		$this->method_description = __('lyfePAY  Gateway Options.', 'woocommerce-easymerchant');
 
@@ -95,8 +92,7 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 		$this->saved_cards = 'yes' === $this->get_option('saved_cards');
 		// Actions.
 		add_filter('woocommerce_credit_card_form_fields', array($this, 'add_cc_card_holder_name'), 10, 2);
-		add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
-		add_action('woocommerce_scheduled_subscription_payment_dummy', array($this, 'process_subscription_payment'), 10, 2);
+		add_action('woocommerce_scheduled_subscription_payment_lyfepay', array($this, 'process_subscription_payment'), 10, 2);
 		add_action('wp_ajax_get_client_token', 'get_client_token');
 		add_action('wp_ajax_nopriv_get_client_token', 'get_client_token');
 	}
@@ -310,7 +306,7 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 			'logo_display' => array(
 				'title'       => __('Brand Logo', 'woocommerce'),
 				'type'        => 'image',
-				'description' =>  '<img src="' . plugin_dir_url(__FILE__) . 'assets/images/lyfecycle-payments-logo.png" alt="Logo" style="max-width: 30%; height: auto; "/>',
+				'description' =>  '<img src="' . plugin_dir_url(__FILE__) . 'assets/images/lyfecycle-payments-logo.png" class="" alt="Logo" style="max-width: 30%; height: auto;filter:drop-shadow(2px 4px 6px black);"/>',
 			),
 			'title' => array(
 				'title'       => __('Title', 'woocommerce'),
@@ -390,8 +386,8 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 	{
 		$icon  = '<img src="' . plugin_dir_url(__FILE__) . '/assets/images/icons/visa.png" alt="Visa" />';
 		$icon .= '<img src="' . plugin_dir_url(__FILE__) . '/assets/images/icons/mastercard.png" alt="MasterCard" />';
-		$icon .= '<img src="' . plugin_dir_url(__FILE__) . '/assets/images/icons/amex.png" alt="Amex" />';
-		return apply_filters('woocommerce_gateway_icon', $icon, $this->id);
+		$icon .= '<img src="' . plugin_dir_url(__FILE__) . '/includes/assets/images/icons/amex.png" alt="Amex" />';
+		return apply_filters('woocommerce_lyfepay_icon', $icon, $this->id);
 	}
 
 
