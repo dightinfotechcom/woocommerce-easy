@@ -13,7 +13,7 @@ final class WC_Gateway_ACH_Easymerchant_Blocks_Support extends AbstractPaymentMe
 	/**
 	 * The gateway instance.
 	 *
-	 * @var WC_Gateway_LyfePAY
+	 * @var WC_Gateway_ACH_LyfePAY
 	 */
 	private $gateway;
 
@@ -29,7 +29,6 @@ final class WC_Gateway_ACH_Easymerchant_Blocks_Support extends AbstractPaymentMe
 	 */
 	public function initialize()
 	{
-		// $this->settings = get_option('woocommerce_dummy_settings', []);
 		$gateways       = WC()->payment_gateways->payment_gateways();
 		$this->gateway  = $gateways[$this->name];
 	}

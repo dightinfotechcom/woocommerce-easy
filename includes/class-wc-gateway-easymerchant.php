@@ -90,11 +90,6 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 		}
 		$this->capture = 'yes' === $this->get_option('capture', 'yes');
 		$this->saved_cards = 'yes' === $this->get_option('saved_cards');
-		// Actions.
-		add_filter('woocommerce_credit_card_form_fields', array($this, 'add_cc_card_holder_name'), 10, 2);
-		add_action('woocommerce_scheduled_subscription_payment_lyfepay', array($this, 'process_subscription_payment'), 10, 2);
-		add_action('wp_ajax_get_client_token', 'get_client_token');
-		add_action('wp_ajax_nopriv_get_client_token', 'get_client_token');
 	}
 
 	/**
@@ -125,43 +120,8 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 		$arr[$key] = $val;
 		return array_reverse($arr, true);
 	}
-	/**
-	 * Add Cardholder name fieeld to default credit card form
-	 * @param array $cc_fields  default cc fields
-	 * @param integer $payment_id paymentgateway id
-	 */
-	public function add_cc_card_holder_name($cc_fields, $payment_id)
-	{
-		if ($payment_id === 'lyfePAY')
-			return $cc_fields;
-		$cc_card_holder_field = '<p class="form-row form-row-wide">
-                 <label for="' . esc_attr($payment_id) . '-card-holder-name">' . __('Card Holder Name', 'woocommerce') . ' <span class="required">*</span></label>
-                 <input id="' . esc_attr($payment_id) . '-card-holder-name" class="input-text wc-credit-card-form-card-holder-name" type="text" maxlength="20" autocomplete="off" placeholder="Enter your name" name="' . $payment_id . '-card-holder-name" />
-             </p>';
-
-		return $this->array_unshift_assoc($cc_fields, "card-holder-name-field", $cc_card_holder_field);
-	}
-
-
-	public function get_curl($url = '')
-	{
-		if ($url) {
-			$curl = curl_init($url);
-		} else {
-			$curl = curl_init();
-		}
-		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
-		curl_setopt($curl, CURLOPT_AUTOREFERER, 1);
-		curl_setopt($curl, CURLOPT_VERBOSE, false);
-		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-			'X-Api-Key: ' . $this->api_key,
-			'X-Api-Secret: ' . $this->secret_key,
-			'User-Agent: ' . LYFE_APP_NAME,
-		));
-		return $curl;
-	}
+	
+	
 
 	/**
 	 * Process the payment
@@ -172,56 +132,165 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 	 *
 	 * @return array|void
 	 */
+
 	public function process_payment($order_id, $retry = true, $force_customer = false)
 	{
-
+		sleep(5);
 		global $woocommerce;
 		$order = wc_get_order($order_id);
-		$amount_details = json_encode([
-			"amount"           => $order->order_total,
-		]);
-		$response = wp_remote_post($this->api_base_url . '/api/v1/paymentintent/', array(
-			'method'    => 'POST',
-			'headers'   => array(
-				'X-Api-Key'      => $this->api_key,
-				'X-Api-Secret'   => $this->secret_key,
-				'Content-Type'   => 'application/json',
-			),
-			'body'               => $amount_details,
-		));
-		$response_body = wp_remote_retrieve_body($response);
-		$response_data = json_decode($response_body, true);
+		
+		try {
+			if (!$order) {
+				error_log("Order not found: " . $order_id);
+				return [
+					'status' => 0,
+					'message' => 'Order not found.'
+				];
+			}
 
-		if ($response_data && $response_data['status'] == 1) {
-			// Return response data
-			return $response_data;
-		} else {
-			// Handle error
-			return [
-				'status' => 0,
-				'message' => 'Payment intent creation failed.'
-			];
+			$amount_details = json_encode([
+				"amount" => $order->order_total,
+			]);
+
+			$response = wp_remote_post($this->api_base_url . '/api/v1/paymentintent/', array(
+				'method'    => 'POST',
+				'headers'   => array(
+					'X-Api-Key'      => $this->api_key,
+					'X-Api-Secret'   => $this->secret_key,
+					'Content-Type'   => 'application/json',
+				),
+				'body' => $amount_details,
+			));
+
+			if (is_wp_error($response)) {
+				error_log("HTTP request failed: " . $response->get_error_message());
+				return [
+					'status' => 0,
+					'message' => 'Payment intent creation failed due to HTTP error.'
+				];
+			}
+
+			$response_body = wp_remote_retrieve_body($response);
+			$response_data = json_decode($response_body, true);
+
+			if ($response_data && isset($response_data['status']) && $response_data['status'] == 1) {
+				setcookie('payment_response', json_encode($response_data), time() + 3600, "/");
+				error_log("Payment response set in cookie: " . print_r($response_data, true));
+			} else {
+				$error_data = [
+					'status' => 0,
+					'message' => 'Payment intent creation failed.'
+				];
+				setcookie('payment_response', json_encode($error_data), time() + 3600, "/");
+				error_log("Payment intent creation failed: " . print_r($response_data, true));
+				return $error_data;
+			}
+
+			$customers_details = json_encode([
+				"username"   => $order->get_billing_email(),
+				"email"      => $order->get_billing_email(),
+				"name"       => $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+				"address"    => $order->get_billing_address_1(),
+				"city"       => $order->get_billing_city(),
+				"state"      => $order->get_billing_state(),
+				"zip"        => $order->get_billing_postcode(),
+				"country"    => $order->get_billing_country()
+			]);
+
+			$customerResponse = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
+				'method'    => 'POST',
+				'headers'   => array(
+					'X-Api-Key'      => $this->api_key,
+					'X-Api-Secret'   => $this->secret_key,
+					'User-Agent: ' . LYFE_APP_NAME,
+					'Content-Type'   => 'application/json',
+				),
+				'body' => $customers_details,
+			));
+
+			$customer_response_body = wp_remote_retrieve_body($customerResponse);
+			$customer_response_data = json_decode($customer_response_body, true);
+			
+			if ($customer_response_data && isset($customer_response_data['status']) && $customer_response_data['status'] == 1) {
+				setcookie('customer_response', json_encode($customer_response_data), time() + 3600, "/");
+				error_log("Customer response set in cookie: " . print_r($customer_response_data, true));
+			} else {
+				$billing_email = $order->get_billing_email();
+				$getCustomerResponse = wp_remote_get($this->api_base_url . '/api/v1/customers', array(
+					'headers' => array(
+						'X-Api-Key'      => $this->api_key,
+						'X-Api-Secret'   => $this->secret_key,
+						'User-Agent: ' . LYFE_APP_NAME,
+						'Content-Type'   => 'application/json',
+					)
+				));
+				$get_customer_response_body = wp_remote_retrieve_body($getCustomerResponse);
+				$get_customer_response_data = json_decode($get_customer_response_body, true);
+				
+				if ($get_customer_response_data && isset($get_customer_response_data['status']) && $get_customer_response_data['status'] == true) {
+					$customers = $get_customer_response_data['customer'];
+					foreach ($customers as $customer) {
+						if ($customer['email'] === $billing_email) {
+							$customer_id = $customer['user_id'];
+							setcookie('customer_response', json_encode(['customer_id' => $customer_id]), time() + 3600, "/");
+							error_log("Customer ID set in cookie: " . $customer_id);
+						}
+					}
+				}
+			}
+			$paymentPayload = json_decode(stripslashes($_COOKIE['paymentPayload']), true);
+			$customerPayload = json_decode(stripslashes($_COOKIE['customer_response']), true);
+			
+			$charge_details = json_encode([
+				"payment_mode"	=> "auth_and_capture",
+				"card_number"	=> str_replace(' ', '', $paymentPayload['card_number']),
+				"exp_month"		=> $paymentPayload['exp_month'],
+				"exp_year"		=> $paymentPayload['exp_year'],
+				"cvc"			=> $paymentPayload['cvc'],
+				"cardholder_name"=> $paymentPayload['cardholder_name'],
+				"currency"		=> $paymentPayload['currency'],
+				"name"			=> $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+				"email"			=> $order->get_billing_email(),
+				"amount"		=> $order->order_total,
+				"description"	=> "Payment through Woocommerce lyfePAY",
+				"customer_id"	=> $customerPayload['customer_id'],
+			]);
+			$chargeResponse = wp_remote_post($this->api_base_url . '/api/v1/charges/', array(
+				'method'    => 'POST',
+				'headers'   => array(
+					'X-Api-Key'      => $this->api_key,
+					'X-Api-Secret'   => $this->secret_key,
+					'Content-Type'   => 'application/json',
+				),
+				'body' => $charge_details,
+			));
+			$charge_response_body = wp_remote_retrieve_body($chargeResponse);
+			$charge_response_data = json_decode($charge_response_body, true);
+			
+			setcookie('paymentPayload', '', time() - 3600, "/");
+			setcookie('payment_response', '', time() - 3600, "/");
+			setcookie('customer_response', '', time() - 3600, "/");
+			if (isset($charge_response_data['charge_id'])) {
+                update_post_meta($order_id, '_charge_id', $charge_response_data['charge_id']);
+                $order->update_status('completed');  // Set order status to completed
+                $order->payment_complete();
+                $woocommerce->cart->empty_cart();
+                return array(
+                    'result' => 'success',
+                    'redirect' => $this->get_return_url($order)
+                );
+            } else {
+                $order->update_status('processing');  // Set order status to processing
+                return array(
+                    'result' => 'failure',
+                    'message' => 'Payment failed.'
+                );
+            }
+		} catch (\Throwable $th) {
+			print_r($th);
+			throw $th;
 		}
 	}
-
-
-
-	public function get_client_token()
-	{
-		check_ajax_referer('my_nonce_action', 'security');
-
-		global $woocommerce, $post;
-		$orderId = $post->ID;
-		$order = wc_get_order($orderId);
-		$order_id = $order->get_id();
-		$gateway = new WC_Gateway_lyfePAY();
-		$response_data = $gateway->process_payment($order_id);
-
-		// Return the response as JSON
-		wp_send_json($response_data);
-	}
-
-
 	/**
 	 * Save source to order.
 	 *
@@ -247,22 +316,23 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 	 */
 	public function process_refund($order_id, $amount = null, $reason = '')
 	{
+		$order = wc_get_order( $order_id );
+
+		if ( ! $this->can_refund_order( $order ) ) {
+			return new WP_Error( 'error', __( 'Refund failed.', 'woocommerce' ) );
+		}
+
 		if (!$amount || $amount < 1) {
 			return new WP_Error('lyfePAY_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1');
 		}
+		
+		$charge_id 		= get_post_meta($order_id, '_charge_id', true);
 
-		$transaction_id = get_post_meta($order_id, '_transaction_id', true);
-		// $curl = $this->get_curl();
-		$order_data = get_post_meta($order_id);
-
-		$post = array(
-			'charge_id' => $transaction_id,
-			'amount' 	=> $amount
-		);
-
-		if ($this->testmode) {
-			$post['test_mode'] = true;
-		}
+		$refund_details = json_encode([
+			'charge_id' => $charge_id,
+			'amount'    => $amount,
+			'reason'    => $reason,
+		]);
 
 		$refundAmount = wp_remote_post($this->api_base_url . '/api/v1/refunds/', array(
 			'method'    => 'POST',
@@ -272,19 +342,20 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 				'Content-Type'   => 'application/json',
 				'User-Agent: ' . LYFE_APP_NAME,
 			),
-			'body'               => $post,
+			'body'               => $refund_details
 		));
 
 		$refund_body = wp_remote_retrieve_body($refundAmount);
 		$refund_data = json_decode($refund_body, true);
 
-		if ($refund_data['status']) {
-			$order = new WC_Order($order_id);
-			// create the note
-			$order->add_order_note('Refunded $' . $amount . ' - Refund ID: ' . $refund_data['refund_id'] . ' - Reason: ' . $reason);
+		if ($refund_data && isset($refund_data['status']) && $refund_data['status'] == 1) {
+			// Refund successful
+			$order->add_order_note(sprintf(__('Refunded %s via lyfePay. Reason: %s', 'woocommerce-easymerchant'), wc_price($amount), $reason));
 			return true;
 		} else {
-			return new WP_Error('lyfePAY_refund_error', $refund_data['refund_id']);
+			// Refund failed
+			$error_message = isset($refund_data['message']) ? $refund_data['message'] : __('Refund failed', 'woocommerce-easymerchant');
+			return new WP_Error('refund_failed', $error_message);
 		}
 
 		return false;
@@ -306,7 +377,7 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 			'logo_display' => array(
 				'title'       => __('Brand Logo', 'woocommerce'),
 				'type'        => 'image',
-				'description' =>  '<img src="' . plugin_dir_url(__FILE__) . 'assets/images/lyfecycle-payments-logo.png" class="" alt="Logo" style="max-width: 30%; height: auto;filter:drop-shadow(2px 4px 6px black);"/>',
+				'description' =>  '<img src="' . plugin_dir_url(__FILE__) . 'assets/images/lyfecycle-payments-logo.png" class="" alt="Logo" style="max-width: 8%; height: auto;"/>',
 			),
 			'title' => array(
 				'title'       => __('Title', 'woocommerce'),
@@ -390,56 +461,6 @@ class WC_Gateway_lyfePAY extends WC_Payment_Gateway
 		return apply_filters('woocommerce_lyfepay_icon', $icon, $this->id);
 	}
 
-
-
-	/**
-	 * Process subscription payment.
-	 *
-	 * @param  float     $amount
-	 * @param  WC_Order  $order
-	 * @return void
-	 */
-	public function process_subscription_payment($amount, $order)
-	{
-		$order_id = $order->get_id();
-		$transaction_id = get_post_meta($order_id, '_transaction_id', true);
-		$user_id = $order->get_user_id();
-		$im_cus_id = get_user_meta($user_id, '_customer_id', true);
-		$card_id = get_post_meta($order_id, '_card_id', true);
-
-		if (!$im_cus_id || !$card_id) {
-			$order->update_status('failed', __('lyfePAY Subscription Payment Failed: Missing customer or card details', 'woocommerce-easymerchant'));
-			return;
-		}
-
-		$body = json_encode([
-			'payment_mode' => 'auth_and_capture',
-			'amount' => $amount,
-			'description' => sprintf(__('Subscription Payment for Order #%s', 'woocommerce'), $order_id),
-			'currency' => strtolower(get_woocommerce_currency()),
-			'customer' => $im_cus_id,
-			'card' => $card_id,
-		]);
-
-		$response = wp_remote_post($this->api_base_url . '/api/v1/charges', array(
-			'method'    => 'POST',
-			'headers'   => array(
-				'X-Api-Key'      => $this->api_key,
-				'X-Api-Secret'   => $this->secret_key,
-				'Content-Type'   => 'application/json',
-				'User-Agent: ' . LYFE_APP_NAME,
-			),
-			'body' => $body,
-		));
-
-		$response_body = wp_remote_retrieve_body($response);
-		$response_data = json_decode($response_body, true);
-
-		if (isset($response_data['status']) && $response_data['status'] === 'success') {
-			$order->payment_complete($response_data['transaction_id']);
-			$order->add_order_note(sprintf(__('lyfePAY Subscription Payment Successful (Transaction ID: %s)', 'woocommerce-easymerchant'), $response_data['transaction_id']));
-		} else {
-			$order->update_status('failed', sprintf(__('lyfePAY Subscription Payment Failed: %s', 'woocommerce-easymerchant'), $response_data['message']));
-		}
-	}
+	
+	
 }

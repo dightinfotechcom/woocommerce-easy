@@ -144,7 +144,7 @@ class WC_lyfePAY_Payments
 	 */
 	protected function __construct()
 	{
-		add_action('wp_enqueue_scripts', 'my_theme_localize_script');
+		
 		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'img_woocommerce_addon_settings_link'));
 		add_action('admin_notices', array($this, 'admin_notices'), 15);
 		add_action('plugins_loaded', array($this, 'init_lyfePAY'));
@@ -165,12 +165,7 @@ class WC_lyfePAY_Payments
 			));
 		});
 	}
-	function my_theme_localize_script()
-	{
-		wp_localize_script('frontend/blocks', 'myTheme', array(
-			'ajaxurl' => admin_url('admin-ajax.php'),
-		));
-	}
+
 
 
 	public function init_lyfePAY()
@@ -194,7 +189,7 @@ class WC_lyfePAY_Payments
 
 		add_action('woocommerce_order_status_on-hold_to_processing', array($this, 'capture_payment'));
 		add_action('woocommerce_order_status_on-hold_to_completed', array($this, 'capture_payment'));
-		// add_filter('plugin_action_links_lyfePAY', array($this, 'img_woocommerce_addon_settings_link'));
+		
 	}
 	/**
 	 * Allow this class and other classes to add slug keyed notices (to avoid duplication)
@@ -266,7 +261,7 @@ class WC_lyfePAY_Payments
 
 		if (('yes' === $hide_for_non_admin_users && current_user_can('manage_options')) || 'no' === $hide_for_non_admin_users) {
 			$gateways[] = 'WC_Gateway_lyfePAY';
-			$gateways[] = 'WC_Gateway_ACH_Easymerchant';
+			$gateways[] = 'WC_Gateway_ACH_LyfePAY';
 		}
 		return $gateways;
 	}
@@ -281,7 +276,7 @@ class WC_lyfePAY_Payments
 			$methods[] = 'WC_Gateway_ACHmerchant_Addons';
 		} else {
 			$methods[] = 'WC_Gateway_lyfePAY';
-			$methods[] = 'WC_Gateway_ACH_Easymerchant';
+			$methods[] = 'WC_Gateway_ACH_LyfePAY';
 		}
 		return $methods;
 	}
@@ -322,7 +317,6 @@ class WC_lyfePAY_Payments
 					$api_key = get_option('api_key');
 					$secret_key = get_option('api_secret');
 				}
-				$options = get_option('woocommerce_easymerchant_settings');
 				curl_setopt($curl, CURLOPT_URL, $api_base_url . '/api/v1/capture');
 				curl_setopt($curl, CURLOPT_POST, 'true');
 				curl_setopt($curl, CURLOPT_POSTFIELDS, array('charge_id' => $charge));
@@ -339,7 +333,7 @@ class WC_lyfePAY_Payments
 				if (is_wp_error($resp)) {
 					$order->add_order_note(__('Unable to capture charge!', 'woocommerce-easymerchant') . ' ' . $resp->get_error_message());
 				} else {
-					$order->add_order_note(sprintf(__('EasyMerchant charge complete (Charge ID: %s)', 'woocommerce-easymerchant'), $resp->charge_id));
+					$order->add_order_note(sprintf(__('LyfePAY charge complete (Charge ID: %s)', 'woocommerce-easymerchant'), $resp->charge_id));
 					// Store other data such as fees
 					update_post_meta($order->id, '_transaction_id', $resp->charge_id);
 				}
@@ -442,6 +436,13 @@ class WC_lyfePAY_Payments
 		return rest_ensure_response(['cards' => $cards]);
 	}
 
+	public function img_woocommerce_addon_settings_link($links)
+	{
+		$settings_url = add_query_arg('page', 'wc-settings', 'admin.php') . '&tab=checkout&section=easymerchant';
+		$settings_link = '<a href="' . esc_url($settings_url) . '">' . __('Settings', 'woocommerce-easymerchant') . '</a>';
+		array_unshift($links, $settings_link);
+		return $links;
+	}
 	/**
 	 * Registers WooCommerce Blocks integration.
 	 */
@@ -460,13 +461,7 @@ class WC_lyfePAY_Payments
 		}
 	}
 
-	public function img_woocommerce_addon_settings_link($links)
-	{
-		$settings_url = add_query_arg('page', 'wc-settings', 'admin.php') . '&tab=checkout&section=easymerchant';
-		$settings_link = '<a href="' . esc_url($settings_url) . '">' . __('Settings', 'woocommerce-easymerchant') . '</a>';
-		array_unshift($links, $settings_link);
-		return $links;
-	}
+	
 }
 
 WC_lyfePAY_Payments::init();

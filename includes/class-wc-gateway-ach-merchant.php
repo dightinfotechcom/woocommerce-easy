@@ -1,7 +1,7 @@
 <?php
 
 /**
- * WC_Gateway_ACH_Easymerchant class
+ * WC_Gateway_ACH_LyfePAY class
  *
  * @author   lyfePAY ACH <info@easymerchant.io>
  * @package  WooCommerce lyfePAY ACH Gateway
@@ -16,11 +16,11 @@ if (!defined('ABSPATH')) {
 /**
  * lyfePAY ACH.
  *
- * @class    WC_Gateway_ACH_Easymerchant
+ * @class    WC_Gateway_ACH_LyfePAY
  * @version  1.0.7
  */
 
-class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
+class WC_Gateway_ACH_LyfePAY extends WC_Payment_Gateway
 {
     /**
      * Payment gateway instructions.
@@ -63,7 +63,6 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             'pre-orders',
             'add_payment_method',
             'refunds',
-            'default_credit_card_form'
         );
         $this->method_title = _x('lyfePAY ACH', 'lyfePAY ACH  Payment Method', 'woocommerce-easymerchant');
         $this->method_description = __('lyfePAY ACH Gateway Options', 'woocommerce-easymerchant');
@@ -71,7 +70,7 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
         $this->init_settings();
         $this->enabled = $this->get_option('enabled');
         $this->testmode = 'yes' === $this->get_option('test_mode');
-        if ($this->testmode == 'yes') { // Arvind please check if this is correct and make all testmode code same
+        if ($this->testmode == 'yes') {
             $this->api_key = $this->get_option('test_api_key');
             $this->secret_key = $this->get_option('test_secret_key');
             $this->api_base_url = 'https://stage-api.stage-easymerchant.io';
@@ -81,9 +80,6 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
             $this->api_base_url = 'https://api.easymerchant.io';
         }
         $this->capture = 'yes' === $this->get_option('capture', 'yes');
-
-        add_filter('woocommerce_account_form_fields', array($this, 'add_cc_account_holder_name'), 10, 2);
-        add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
     }
 
 
@@ -180,68 +176,78 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
      */
     public function process_payment($order_id, $retry = true, $force_customer = false)
     {
-
+        sleep(5);
         global $woocommerce;
-        session_start();
-
         $order = wc_get_order($order_id);
-        $user_id = get_current_user_id();
-        // $im_cus_id = get_user_meta($user_id, '_customer_id', true);
-        // Generate a random number between 1000 and 9999
-        $randomNumber = rand(1000, 9999);
-        $username = $order->shipping_first_name . $order->shipping_last_name . $randomNumber;
-        $customer_details = json_encode([
-            "username"          => strtolower($username),
-            "email"             => $order->billing_email,
-            "name"              => $order->shipping_first_name . ' ' . $order->shipping_last_name,
-            "address"           => $order->shipping_address_1,
-            "city"              => $order->shipping_city,
-            "state"             => $order->shipping_state,
-            "zip"               => $order->shipping_postcode,
-            "country"           => $order->billing_country,
-        ]);
-        $response = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
-            'method'    => 'POST',
-            'headers'   => array(
-                'X-Api-Key'      => $this->api_key,
-                'X-Api-Secret'   => $this->secret_key,
-                'User-Agent: ' . LYFE_APP_NAME,
-                'Content-Type'   => 'application/json',
-            ),
-            'body'               => $customer_details,
-        ));
-        $response_body = wp_remote_retrieve_body($response);
-        $response_data = json_decode($response_body, true);
-        // Retrieve ACH details from Session
-        $getAch = $_SESSION['achDetails'];
-
-        $account_number = $getAch['ach-account-number'] ?? '';
-        $routing_number = $getAch['ach-routing-number'] ?? '';
-        $account_type   = $getAch['ach-account-type'] ?? '';
-
-        $ach_details = json_encode([
-            'description'    => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
-            'account_number' => $account_number,
-            'routing_number' => $routing_number,
-            'account_type'   => $account_type,
-            'currency'       => strtolower(get_woocommerce_currency()),
-            'amount'         => $order->order_total,
-            'customer'       => $response_data['customer_id'],
-        ]);
-
-        if ($order->get_total() > 0) {
-            $body = json_encode([
-                'payment_mode'      => 'auth_and_capture',
-                'amount'            => $order->order_total,
-                'name'              => $order->shipping_first_name . ' ' . $order->shipping_last_name,
-                'email'             => $order->billing_email,
-                'description'       => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
-                'currency'          => strtolower(get_woocommerce_currency()),
-                'account_number'    => $account_number,
-                'routing_number'    => $routing_number,
-                'account_type'      => $account_type,
+        
+        try {
+            $customers_details = json_encode([
+                "username"   => $order->get_billing_email(),
+                "email"      => $order->get_billing_email(),
+                "name"       => $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+                "address"    => $order->get_billing_address_1(),
+                "city"       => $order->get_billing_city(),
+                "state"      => $order->get_billing_state(),
+                "zip"        => $order->get_billing_postcode(),
+                "country"    => $order->get_billing_country()
             ]);
-            $achCharge = wp_remote_post($this->api_base_url . '/api/v1/ach/charge', array(
+
+            $customerResponse = wp_remote_post($this->api_base_url . '/api/v1/customers/', array(
+				'method'    => 'POST',
+				'headers'   => array(
+					'X-Api-Key'      => $this->api_key,
+					'X-Api-Secret'   => $this->secret_key,
+					'Content-Type'   => 'application/json',
+				),
+				'body' => $customers_details,
+			));
+
+			$customer_response_body = wp_remote_retrieve_body($customerResponse);
+			$customer_response_data = json_decode($customer_response_body, true);
+
+            if ($customer_response_data && isset($customer_response_data['status']) && $customer_response_data['status'] == 1) {
+				setcookie('customer_response', json_encode($customer_response_data), time() + 3600, "/");
+				error_log("Customer response set in cookie: " . print_r($customer_response_data, true));
+				
+			} else {
+				$billing_email = $order->get_billing_email();
+				$getCustomerResponse = wp_remote_get($this->api_base_url . '/api/v1/customers', array(
+					'headers' => array(
+						'X-Api-Key'      => $this->api_key,
+						'X-Api-Secret'   => $this->secret_key,
+                        'User-Agent: ' . LYFE_APP_NAME,
+						'Content-Type'   => 'application/json',
+					)
+				));
+				$get_customer_response_body = wp_remote_retrieve_body($getCustomerResponse);
+				$get_customer_response_data = json_decode($get_customer_response_body, true);
+				
+				if ($get_customer_response_data && isset($get_customer_response_data['status']) && $get_customer_response_data['status'] == true) {
+					$customers = $get_customer_response_data['customer'];
+					foreach ($customers as $customer) {
+						if ($customer['email'] === $billing_email) {
+							$customer_id = $customer['user_id'];
+							setcookie('customer_response', json_encode(['customer_id' => $customer_id]), time() + 3600, "/");
+							error_log("Customer ID set in cookie: " . $customer_id);
+						}
+					}
+				}
+			}
+        
+            $paymentPayload = json_decode(stripslashes($_COOKIE['ACHPaymentPayload']), true);
+		    $customerPayload = json_decode(stripslashes($_COOKIE['customer_response']), true);
+
+            $ach_details = json_encode([
+                'description'    => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+                'account_number' => $paymentPayload['account_number'],
+                'routing_number' => $paymentPayload['routing_number'],
+                'account_type'   => $paymentPayload['account_type'],
+                'currency'       => strtolower(get_woocommerce_currency()),
+                'amount'         => $order->order_total,
+                'customer'       => $customerPayload['customer_id'],
+                'name'           => $order->get_billing_first_name() . " " . $order->get_billing_last_name()
+            ]);
+            $chargeResponse = wp_remote_post($this->api_base_url . '/api/v1/ach/charge/', array(
                 'method'    => 'POST',
                 'headers'   => array(
                     'X-Api-Key'      => $this->api_key,
@@ -249,13 +255,15 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
                     'User-Agent: ' . LYFE_APP_NAME,
                     'Content-Type'   => 'application/json',
                 ),
-                'body'               => $body,
+                'body' => $ach_details,
             ));
-            $createAchCharge     = wp_remote_retrieve_body($achCharge);
-            $achchargeResponse   = json_decode($createAchCharge, true);
-
-            if (isset($achchargeResponse['status']) && !empty($achchargeResponse['status'])) {
-                $order = new WC_Order($order_id);
+            $charge_response_body = wp_remote_retrieve_body($chargeResponse);
+            $charge_response_data = json_decode($charge_response_body, true);
+            setcookie('ACHPaymentPayload', '', time() - 3600, "/");
+            setcookie('customer_response', '', time() - 3600, "/");
+            if (isset($charge_response_data['charge_id'])) {
+                update_post_meta($order_id, '_charge_id', $charge_response_data['charge_id']);
+                $order->update_status('processing'); 
                 $order->payment_complete();
                 $woocommerce->cart->empty_cart();
                 return array(
@@ -263,50 +271,59 @@ class WC_Gateway_ACH_Easymerchant extends WC_Payment_Gateway
                     'redirect' => $this->get_return_url($order)
                 );
             }
+            
         }
+        catch (\Throwable $th) {
+			print_r($th);
+			throw $th;
+		}
     }
 
     public function process_refund($order_id, $amount = null, $reason = '')
-    {
-        if (!$amount || $amount < 1) {
-            return new WP_Error('simplify_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1');
-        }
-        $transaction_id = get_post_meta($order_id, '_transaction_id', true);
-        // $curl = $this->get_curl();
-        // $order_data = get_post_meta($order_id);
+	{
+		$order = wc_get_order( $order_id );
 
-        $post = array(
-            'charge_id' => $transaction_id,
-            'amount'     => $amount
-        );
+		if ( ! $this->can_refund_order( $order ) ) {
+			return new WP_Error( 'error', __( 'Refund failed.', 'woocommerce' ) );
+		}
 
-        if ($this->testmode) {
-            $post['test_mode'] = true;
-        }
+		if (!$amount || $amount < 1) {
+			return new WP_Error('lyfePAY_refund_error', 'There was a problem initiating a refund. This value must be greater than or equal to $1');
+		}
+		
+		$charge_id 		= get_post_meta($order_id, '_charge_id', true);
 
-        $refundAmount = wp_remote_post($this->api_base_url . '/api/v1/refunds/', array(
-            'method'    => 'POST',
-            'headers'   => array(
-                'X-Api-Key'      => $this->api_key,
-                'X-Api-Secret'   => $this->secret_key,
-                'User-Agent: ' . LYFE_APP_NAME,
-                'Content-Type'   => 'application/json',
-            ),
-            'body'               => $post,
-        ));
+		$refund_details = json_encode([
+			'charge_id' => $charge_id,
+			'amount'    => $amount,
+			'reason'    => $reason,
+		]);
 
-        $refund_body = wp_remote_retrieve_body($refundAmount);
-        $refund_data = json_decode($refund_body, true);
+		$refundAmount = wp_remote_post($this->api_base_url . '/api/v1/refunds/', array(
+			'method'    => 'POST',
+			'headers'   => array(
+				'X-Api-Key'      => $this->api_key,
+				'X-Api-Secret'   => $this->secret_key,
+				'Content-Type'   => 'application/json',
+				'User-Agent: ' . LYFE_APP_NAME,
+			),
+			'body'               => $refund_details
+		));
 
-        if ($refund_data['status']) {
-            $order = new WC_Order($order_id);
-            // create the note
-            $order->add_order_note('Refunded $' . $amount . ' - Refund ID: ' . $refund_data['refund_id'] . ' - Reason: ' . $reason);
-            return true;
-        } else {
-            return new WP_Error('simplify_refund_error', $refund_data['refund_id']);
-        }
+		$refund_body = wp_remote_retrieve_body($refundAmount);
+		$refund_data = json_decode($refund_body, true);
 
-        return false;
-    }
+		if ($refund_data && isset($refund_data['status']) && $refund_data['status'] == 1) {
+			// Refund successful
+			$order->add_order_note(sprintf(__('Refunded %s via lyfePay. Reason: %s', 'woocommerce-easymerchant'), wc_price($amount), $reason));
+			return true;
+		} else {
+			// Refund failed
+			$error_message = isset($refund_data['message']) ? $refund_data['message'] : __('Refund failed', 'woocommerce-easymerchant');
+			return new WP_Error('refund_failed', $error_message);
+		}
+
+		return false;
+	}
+
 }
